@@ -28,26 +28,28 @@ class CostCalculator:
         ui_rate = project.ui_commission_rate or Decimal("0")
 
         has_lead = any(m.role == "负责人" for m in members)
-        has_ui_member = any(m.role == "UI" for m in members)
-        single_member = len(members) == 1
+        ui_members = [m for m in members if m.role == "UI"]
+        dev_members = [m for m in members if m.role in ("开发", "负责人", None, "")]
+        pure_devs = [m for m in members if m.role in ("开发", None, "")]
 
-        if single_member:
-            # 单人: 100% 全部
+        # 单人项目定义: 1个开发 + 无UI → 独享100%
+        is_single = len(pure_devs) == 1 and len(ui_members) == 0 and len(members) == 1
+
+        if is_single:
             lead_share = Decimal("0")
             ui_share = Decimal("0")
             dev_pool = commission_pool
         else:
             lead_share = commission_pool * Decimal("0.10") if has_lead else Decimal("0")
-            ui_share = commission_pool * ui_rate if has_ui_member and ui_rate > 0 else Decimal("0")
+            ui_share = commission_pool * ui_rate if ui_members and ui_rate > 0 else Decimal("0")
             dev_pool = commission_pool - lead_share - ui_share
 
-        # 开发人员按 share_ratio 分配 dev_pool
-        dev_members = [m for m in members if m.role in ("开发", None, "")]
-        total_dev_ratio = sum((m.share_ratio or Decimal("1")) for m in dev_members) or Decimal("1")
+        # 开发人员(非负责人)按 share_ratio 分配 dev_pool
+        total_dev_ratio = sum((m.share_ratio or Decimal("1")) for m in pure_devs) or Decimal("1")
 
-        # 写回每个成员的奖金到数据库
+        # 写回每个成员的奖金
         for m in members:
-            if single_member:
+            if is_single:
                 m.bonus = commission_pool
                 m.product_bonus = Decimal("0")
             elif m.role == "负责人":
@@ -56,7 +58,7 @@ class CostCalculator:
             elif m.role == "UI":
                 m.bonus = ui_share
                 m.product_bonus = Decimal("0")
-            elif m.role in ("开发", None, ""):
+            else:  # 开发
                 ratio = (m.share_ratio or Decimal("1")) / total_dev_ratio
                 m.bonus = dev_pool * ratio
                 m.product_bonus = Decimal("0")

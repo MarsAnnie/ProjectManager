@@ -79,6 +79,24 @@ export default function ProjectDetail() {
       message.warning("请至少选择一名员工");
       return;
     }
+    // 校验1: 开发人员分成总和不超过100%
+    const devs = valid.filter((r) => r.role === "开发");
+    const totalRatio = devs.reduce((sum, r) => sum + (Number(r.share_ratio) || 0), 0);
+    if (totalRatio > 1.001) {
+      message.error(`开发分成比例总和 ${(totalRatio * 100).toFixed(0)}% 超过100%`);
+      return;
+    }
+    // 校验2: 多个开发时必须有负责人
+    if (devs.length >= 2 && !valid.some((r) => r.role === "负责人")) {
+      message.error("多个开发人员时必须选择一名负责人");
+      return;
+    }
+    // 校验3: 负责人最多1个
+    const leads = valid.filter((r) => r.role === "负责人");
+    if (leads.length > 1) {
+      message.error("负责人只能有一位");
+      return;
+    }
     const payload = valid.map((r) => ({
       project_id: Number(id),
       employee_id: r.employee_id,
@@ -390,6 +408,24 @@ export default function ProjectDetail() {
         <Button type="dashed" onClick={addMemberRow} icon={<PlusOutlined />} style={{ marginTop: 12, width: "100%" }}>
           增加一行
         </Button>
+        {(() => {
+          const devs = memberRows.filter((r) => r.employee_id && r.role === "开发");
+          const total = devs.reduce((s, r) => s + (Number(r.share_ratio) || 0), 0);
+          const hasLead = memberRows.some((r) => r.employee_id && r.role === "负责人");
+          const color = total > 1.001 ? "#ef4444" : "#2dd4bf";
+          return (
+            <div style={{ marginTop: 12, padding: 10, background: "rgba(255,255,255,0.04)", borderRadius: 6, fontSize: 12 }}>
+              <div style={{ color }}>
+                开发分成总和: {(total * 100).toFixed(0)}% {total > 1.001 ? "❌ 超过100%" : "✓"}
+              </div>
+              {devs.length >= 2 && (
+                <div style={{ color: hasLead ? "#2dd4bf" : "#f59e0b", marginTop: 4 }}>
+                  负责人: {hasLead ? "✓ 已选" : "⚠ 多个开发时必选"}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </Modal>
 
       {/* Edit Project Modal */}
