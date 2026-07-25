@@ -97,7 +97,11 @@ class Project(Base):
     )
 
     business_manager_links = relationship("ProjectBusinessManager", back_populates="project", cascade="all, delete-orphan")
-    members = relationship("ProjectMember", back_populates="project")
+    members = relationship(
+        "ProjectMember",
+        back_populates="project",
+        primaryjoin="and_(ProjectMember.project_id==Project.id, ProjectMember.deleted_at.is_(None))",
+    )
     costs = relationship("ProjectCost", back_populates="project")
     payments = relationship("Payment", back_populates="project")
     snapshots = relationship("CostSnapshot", back_populates="project")

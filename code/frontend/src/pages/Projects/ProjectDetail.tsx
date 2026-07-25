@@ -29,7 +29,24 @@ export default function ProjectDetail() {
   const [uiPersons, setUIPersons] = useState<any[]>([]);
   const [managers, setManagers] = useState<any[]>([]);
   const [editForm] = Form.useForm();
-  const [memberRows, setMemberRows] = useState<any[]>([{ key: 1, employee_id: null, role: "开发", share_ratio: 1 }]);
+  const [memberRows, setMemberRows] = useState<any[]>([{ key: 1, employee_id: null, is_lead: false, is_ui: false, share_ratio: 1 }]);
+
+  const openMemberModal = () => {
+    // 回显已有成员
+    if (project?.members && project.members.length > 0) {
+      setMemberRows(project.members.map((m: any) => ({
+        key: m.id,
+        employee_id: m.employee_id,
+        is_lead: m.role === "负责人",
+        is_ui: m.role === "UI",
+        share_ratio: Number(m.share_ratio) || 1,
+        _existing: true, // 标记为已存在的成员
+      })));
+    } else {
+      setMemberRows([{ key: 1, employee_id: null, is_lead: false, is_ui: false, share_ratio: 1 }]);
+    }
+    setMemberOpen(true);
+  };
   const [costData, setCostData] = useState<any>(null);
   const [calcLoading, setCalcLoading] = useState(false);
 
@@ -61,7 +78,7 @@ export default function ProjectDetail() {
   const addMemberRow = () => {
     setMemberRows([...memberRows, {
       key: Date.now(),
-      employee_id: null, role: "开发", share_ratio: 1,
+      employee_id: null, is_lead: false, is_ui: false, share_ratio: 1,
     }]);
   };
 
@@ -79,20 +96,20 @@ export default function ProjectDetail() {
       message.warning("请至少选择一名员工");
       return;
     }
-    // 校验1: 开发人员分成总和不超过100%
-    const devs = valid.filter((r) => r.role === "开发");
+    // 校验1: 开发人员(非UI)分成总和不超过100%
+    const devs = valid.filter((r) => !r.is_ui);
     const totalRatio = devs.reduce((sum, r) => sum + (Number(r.share_ratio) || 0), 0);
     if (totalRatio > 1.001) {
       message.error(`开发分成比例总和 ${(totalRatio * 100).toFixed(0)}% 超过100%`);
       return;
     }
     // 校验2: 多个开发时必须有负责人
-    if (devs.length >= 2 && !valid.some((r) => r.role === "负责人")) {
+    if (devs.length >= 2 && !valid.some((r) => r.is_lead)) {
       message.error("多个开发人员时必须选择一名负责人");
       return;
     }
     // 校验3: 负责人最多1个
-    const leads = valid.filter((r) => r.role === "负责人");
+    const leads = valid.filter((r) => r.is_lead);
     if (leads.length > 1) {
       message.error("负责人只能有一位");
       return;
@@ -100,13 +117,19 @@ export default function ProjectDetail() {
     const payload = valid.map((r) => ({
       project_id: Number(id),
       employee_id: r.employee_id,
-      role: r.role,
+      role: r.is_lead ? "负责人" : r.is_ui ? "UI" : "开发",
       share_ratio: r.share_ratio,
     }));
+    // 先移除所有已有成员，再批量添加（实现替换效果）
+    if (project?.members) {
+      for (const m of project.members) {
+        await api.delete(`/projects/${id}/members/${m.id}`).catch(() => {});
+      }
+    }
     await api.post(`/projects/${id}/members/batch`, payload);
-    message.success(`已添加 ${valid.length} 名成员`);
+    message.success(`已保存 ${valid.length} 名成员`);
     setMemberOpen(false);
-    setMemberRows([{ key: 1, employee_id: null, role: "开发", share_ratio: 1 }]);
+    setMemberRows([{ key: 1, employee_id: null, is_lead: false, is_ui: false, share_ratio: 1 }]);
     fetchProject();
   };
 
@@ -243,7 +266,7 @@ export default function ProjectDetail() {
             </Card>
           )}
 
-          <Card className="glass-card" title="参与人员" extra={<Button size="small" onClick={() => setMemberOpen(true)}>+ 添加</Button>}
+          <Card className="glass-card" title="参与人员" extra={<Button size="small" onClick={openMemberModal}>+ 添加</Button>}
             style={{ borderRadius: 12, marginBottom: 16 }}>
             <Table dataSource={project.members || []} columns={memberColumns} rowKey="id" size="small" pagination={false} />
           </Card>
@@ -337,7 +360,10 @@ export default function ProjectDetail() {
         title="添加项目成员"
         open={memberOpen}
         onOk={addMember}
-        onCancel={() => setMemberOpen(false)}
+        onCancel={() => {
+          setMemberOpen(false);
+          setMemberRows([{ key: 1, employee_id: null, is_lead: false, is_ui: false, share_ratio: 1 }]);
+        }}
         okText="确认添加"
         cancelText="取消"
         width={680}
@@ -368,17 +394,31 @@ export default function ProjectDetail() {
               ),
             },
             {
-              title: "角色", dataIndex: "role", width: 120,
+              title: "负责人", dataIndex: "is_lead", width: 70,
               render: (v: any, r: any) => (
-                <Select
-                  value={v}
-                  style={{ width: "100%" }}
-                  options={[
-                    { value: "负责人", label: "负责人" },
-                    { value: "UI", label: "UI" },
-                    { value: "开发", label: "开发" },
-                  ]}
-                  onChange={(val) => updateMemberRow(r.key, "role", val)}
+                <input
+                  type="radio"
+                  name="lead-radio"
+                  checked={v}
+                  onChange={() => {
+                    // 清除其他行的负责人标记
+                    setMemberRows(memberRows.map((row) => ({
+                      ...row,
+                      is_lead: row.key === r.key,
+                    })));
+                  }}
+                  style={{ cursor: "pointer", width: 18, height: 18 }}
+                />
+              ),
+            },
+            {
+              title: "UI", dataIndex: "is_ui", width: 50,
+              render: (v: any, r: any) => (
+                <input
+                  type="checkbox"
+                  checked={v}
+                  onChange={(e) => updateMemberRow(r.key, "is_ui", e.target.checked)}
+                  style={{ cursor: "pointer", width: 18, height: 18 }}
                 />
               ),
             },
@@ -390,7 +430,6 @@ export default function ProjectDetail() {
                   min={0}
                   max={1}
                   step={0.1}
-                  disabled={r.role !== "开发"}
                   formatter={(val) => val ? `${(val * 100).toFixed(0)}%` : ""}
                   parser={(val: any) => (val ? Number(val.replace("%", "")) / 100 : 0)}
                   onChange={(val) => updateMemberRow(r.key, "share_ratio", val)}
@@ -409,9 +448,9 @@ export default function ProjectDetail() {
           增加一行
         </Button>
         {(() => {
-          const devs = memberRows.filter((r) => r.employee_id && r.role === "开发");
+          const devs = memberRows.filter((r) => r.employee_id && !r.is_ui);
           const total = devs.reduce((s, r) => s + (Number(r.share_ratio) || 0), 0);
-          const hasLead = memberRows.some((r) => r.employee_id && r.role === "负责人");
+          const hasLead = memberRows.some((r) => r.employee_id && r.is_lead);
           const color = total > 1.001 ? "#ef4444" : "#2dd4bf";
           return (
             <div style={{ marginTop: 12, padding: 10, background: "rgba(255,255,255,0.04)", borderRadius: 6, fontSize: 12 }}>
