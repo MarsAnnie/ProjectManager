@@ -29,7 +29,8 @@ def list_projects(
     db: Session = Depends(get_db),
 ):
     q = db.query(Project).options(
-        joinedload(Project.children)
+        joinedload(Project.children),
+        joinedload(Project.business_manager)
     ).filter(Project.deleted_at.is_(None), Project.parent_project_id.is_(None))
     if status:
         q = q.filter(Project.status == status)

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Table, Button, Modal, Form, Input, Select, InputNumber, Card, Tag, message, Space } from "antd";
+import { Table, Button, Modal, Form, Input, Select, InputNumber, Row, Col, Card, Tag, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/client";
@@ -71,25 +71,25 @@ export default function ProjectList() {
 
   const columns = [
     {
-      title: "项目名称", dataIndex: "project_name", key: "name",
+      title: "项目名称", dataIndex: "project_name", key: "name", width: 200,
       render: (v: string, r: any) => (
         <span>
           <a onClick={() => navigate(`/projects/${r.id}`)}>{v}</a>
           {r.children && r.children.length > 0 && (
             <Tag color="orange" style={{ marginLeft: 8, fontSize: 11 }}>
-              +{r.children.length}项增项
+              +{r.children.length}增项
             </Tag>
           )}
         </span>
       ),
     },
-    { title: "客户", dataIndex: "customer_name", key: "customer" },
+    { title: "客户", dataIndex: "customer_name", key: "customer", width: 120 },
     {
-      title: "金额", dataIndex: "amount", key: "amount",
-      render: (v: number) => formatMoney(v),
+      title: "金额", dataIndex: "amount", key: "amount", width: 110,
+      render: (v: number) => <span style={{ fontVariantNumeric: "tabular-nums" }}>{formatMoney(v)}</span>,
     },
     {
-      title: "状态", dataIndex: "status", key: "status",
+      title: "状态", dataIndex: "status", key: "status", width: 90,
       render: (v: string) => {
         const cls = ["完成", "已交付"].includes(v) ? "status-tag-done"
           : ["开发中", "开发准备", "UI确认"].includes(v) ? "status-tag-progress"
@@ -97,8 +97,16 @@ export default function ProjectList() {
         return <Tag className={cls}>{v}</Tag>;
       },
     },
-    { title: "地区", dataIndex: "region", key: "region" },
-    { title: "周期(月)", dataIndex: "project_cycle_month", key: "cycle" },
+    { title: "地区", dataIndex: "region", key: "region", width: 80 },
+    { title: "周期(月)", dataIndex: "project_cycle_month", key: "cycle", width: 80 },
+    {
+      title: "商务", dataIndex: ["business_manager", "name"], key: "bm", width: 80,
+      render: (v: string) => v || "-",
+    },
+    {
+      title: "签约", dataIndex: "contract_date", key: "cd", width: 100,
+      render: (v: string) => v || "-",
+    },
     {
       title: "操作", key: "actions",
       render: (_: any, r: any) => (
@@ -148,31 +156,44 @@ export default function ProjectList() {
         width={640}
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="project_name" label="项目名称" rules={[{ required: true }]}>
-            <Input />
+          <Form.Item name="project_name" label="项目名称" rules={[
+            { required: true, message: "请输入项目名称" },
+            { max: 100, message: "项目名称不超过100字" },
+          ]}>
+            <Input placeholder="项目名称，如 AI客服系统" />
           </Form.Item>
-          <Space>
-            <Form.Item name="customer_name" label="客户名称">
-              <Input />
-            </Form.Item>
-            <Form.Item name="region" label="地区">
-              <Input />
-            </Form.Item>
-          </Space>
-          <Space>
-            <Form.Item name="amount" label="合同金额">
-              <InputNumber min={0} prefix="¥" style={{ width: 160 }} />
-            </Form.Item>
-            <Form.Item name="project_cycle_month" label="项目周期(月)">
-              <InputNumber min={0} step={0.5} style={{ width: 140 }} />
-            </Form.Item>
-            <Form.Item name="business_manager_id" label="商务经理">
-              <Select
-                style={{ width: 140 }}
-                options={managers.map((m: any) => ({ value: m.id, label: m.name }))}
-              />
-            </Form.Item>
-          </Space>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="customer_name" label="客户名称">
+                <Input placeholder="客户公司或联系人名称" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="region" label="地区">
+                <Input placeholder="如 郑州、北京、深圳" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item name="amount" label="合同金额" rules={[
+                { pattern: /^\d+(\.\d{1,2})?$/, message: "请输入有效的金额" },
+              ]}>
+                <InputNumber min={0} max={99999999} prefix="¥" placeholder="如 50000" style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="project_cycle_month" label="项目周期(月)">
+                <InputNumber min={0} max={60} step={0.5} placeholder="如 1.5 个月" style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="business_manager_id" label="商务经理">
+                <Select placeholder="选择商务" allowClear style={{ width: "100%" }}
+                  options={managers.map((m: any) => ({ value: m.id, label: m.name }))} />
+              </Form.Item>
+            </Col>
+          </Row>
           <Form.Item name="status" label="项目状态" initialValue="待签约">
             <Select options={STATUS_OPTIONS} />
           </Form.Item>

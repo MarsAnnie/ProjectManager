@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Table, Button, Modal, Form, Input, Select, InputNumber, Space, Tag, Card, message } from "antd";
+import { Table, Button, Modal, Form, Input, Select, InputNumber, Row, Col, Tag, Card, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/client";
@@ -138,14 +138,17 @@ export default function EmployeeList() {
         cancelText="取消"
       >
         <Form form={form} layout="vertical">
-          <Form.Item name="name" label="姓名" rules={[{ required: true }]}>
-            <Input />
+          <Form.Item name="name" label="姓名" rules={[
+            { required: true, message: "请输入姓名" },
+            { max: 20, message: "姓名不超过20字" },
+          ]}>
+            <Input placeholder="员工姓名" />
           </Form.Item>
           <Form.Item name="position" label="岗位">
-            <Input />
+            <Input placeholder="如 AI应用开发工程师" />
           </Form.Item>
           <Form.Item name="level" label="级别">
-            <Select options={[
+            <Select placeholder="选择级别" options={[
               { value: "高级", label: "高级" },
               { value: "中级", label: "中级" },
               { value: "初级", label: "初级" },
@@ -165,17 +168,25 @@ export default function EmployeeList() {
               { value: "离职", label: "离职" },
             ]} />
           </Form.Item>
-          <Space>
-            <Form.Item name="salary" label="工资">
-              <InputNumber min={0} prefix="¥" />
-            </Form.Item>
-            <Form.Item name="guarantee" label="保底">
-              <InputNumber min={0} prefix="¥" />
-            </Form.Item>
-            <Form.Item name="social_security" label="社保">
-              <InputNumber min={0} prefix="¥" />
-            </Form.Item>
-          </Space>
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item name="salary" label="工资" rules={[
+                { pattern: /^\d+(\.\d{1,2})?$/, message: "请输入有效数字" },
+              ]}>
+                <InputNumber min={0} max={999999} prefix="¥" placeholder="月薪" style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="guarantee" label="保底">
+                <InputNumber min={0} max={999999} prefix="¥" placeholder="保底金额" style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="social_security" label="社保">
+                <InputNumber min={0} max={99999} prefix="¥" placeholder="社保金额" style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+          </Row>
         </Form>
       </Modal>
     </div>
