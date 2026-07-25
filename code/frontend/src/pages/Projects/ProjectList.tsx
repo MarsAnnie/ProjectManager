@@ -132,6 +132,30 @@ export default function ProjectList() {
           columns={columns}
           rowKey="id"
           size="middle"
+          expandable={{
+            rowExpandable: (r: any) => r.children && r.children.length > 0,
+            expandedRowRender: (r: any) => (
+              <Table
+                dataSource={r.children}
+                rowKey="id"
+                size="small"
+                pagination={false}
+                columns={[
+                  { title: "增项名称", dataIndex: "project_name", key: "n", render: (v: string, rr: any) => (
+                    <a onClick={() => navigate(`/projects/${rr.id}`)}>↘ {v}</a>
+                  )},
+                  { title: "金额", dataIndex: "amount", key: "a", render: (v: number) => formatMoney(v), width: 120 },
+                  { title: "状态", dataIndex: "status", key: "s", width: 100, render: (v: string) => {
+                    const cls = ["完成", "已交付"].includes(v) ? "status-tag-done"
+                      : ["开发中", "开发准备", "UI确认"].includes(v) ? "status-tag-progress"
+                      : "status-tag-pending";
+                    return <Tag className={cls}>{v}</Tag>;
+                  }},
+                  { title: "周期", dataIndex: "project_cycle_month", key: "c", width: 80, render: (v: any) => v ? `${v}月` : "-" },
+                ]}
+              />
+            ),
+          }}
           pagination={{
             current: page,
             pageSize: pageSize,
