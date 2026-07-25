@@ -1,0 +1,47 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: pm-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-pm123456}
+      MYSQL_DATABASE: ${DB_NAME:-projectmanager}
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  backend:
+    build: ./backend
+    container_name: pm-backend
+    restart: unless-stopped
+    environment:
+      DB_TYPE: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-pm123456}
+      DB_NAME: ${DB_NAME:-projectmanager}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backups:/app/backup
+      - ./data:/app/data
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    container_name: pm-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:

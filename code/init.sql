@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS project_logs (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    project_id INTEGER,
+    action VARCHAR(100),
+    detail TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
