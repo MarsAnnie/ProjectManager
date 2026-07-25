@@ -23,9 +23,20 @@ export default function EmployeeList() {
   const [businesses, setBusinesses] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<string>("dev");
 
+  const [allEmployees, setAllEmployees] = useState<any[]>([]);
+
+  const fetchAllForStats = () => {
+    api.get("/employees", { params: { page_size: 200 } }).then((r) => setAllEmployees(r.data.items));
+  };
+
   const fetchEmployees = (p = page, ps = pageSize) => {
     const params: any = { page: p, page_size: ps };
-    if (filter && filter !== "all") params.status = filter;
+    if (["在职", "离职"].includes(filter)) {
+      params.status = filter;
+    } else if (["正式", "试用", "实习"].includes(filter)) {
+      params.status = "在职";
+      params.employment_type = filter;
+    }
     api.get("/employees", { params }).then((r) => {
       const sorted = [...r.data.items].sort((a: any, b: any) => {
         if (a.status === "离职" && b.status !== "离职") return 1;
@@ -47,6 +58,7 @@ export default function EmployeeList() {
 
   useEffect(() => {
     fetchEmployees();
+    fetchAllForStats();
     fetchUIPersons();
     fetchBusiness();
   }, [filter]);
@@ -74,11 +86,11 @@ export default function EmployeeList() {
 
   // ═══ Stat cards ═══
   const statCards = [
-    { key: "在职", label: "在职", icon: <TeamOutlined />, color: "#22c55e", bg: "rgba(34,197,94,0.1)", count: employees.filter((e: any) => e.status === "在职").length },
-    { key: "正式", label: "正式", icon: null, color: "#f97316", bg: "rgba(249,115,22,0.1)", count: employees.filter((e: any) => e.employment_type === "正式" && e.status === "在职").length },
-    { key: "试用", label: "试用", icon: null, color: "#3b82f6", bg: "rgba(59,130,246,0.1)", count: employees.filter((e: any) => e.employment_type === "试用" && e.status === "在职").length },
-    { key: "实习", label: "实习", icon: null, color: "#22c55e", bg: "rgba(34,197,94,0.1)", count: employees.filter((e: any) => e.employment_type === "实习" && e.status === "在职").length },
-    { key: "离职", label: "离职", icon: null, color: "#ef4444", bg: "rgba(239,68,68,0.1)", count: employees.filter((e: any) => e.status === "离职").length },
+    { key: "在职", label: "在职", icon: <TeamOutlined />, color: "#22c55e", bg: "rgba(34,197,94,0.1)", count: allEmployees.filter((e: any) => e.status === "在职").length },
+    { key: "正式", label: "正式", icon: null, color: "#f97316", bg: "rgba(249,115,22,0.1)", count: allEmployees.filter((e: any) => e.employment_type === "正式" && e.status === "在职").length },
+    { key: "试用", label: "试用", icon: null, color: "#3b82f6", bg: "rgba(59,130,246,0.1)", count: allEmployees.filter((e: any) => e.employment_type === "试用" && e.status === "在职").length },
+    { key: "实习", label: "实习", icon: null, color: "#22c55e", bg: "rgba(34,197,94,0.1)", count: allEmployees.filter((e: any) => e.employment_type === "实习" && e.status === "在职").length },
+    { key: "离职", label: "离职", icon: null, color: "#ef4444", bg: "rgba(239,68,68,0.1)", count: allEmployees.filter((e: any) => e.status === "离职").length },
     { key: "ui", label: "UI人员", icon: <UserOutlined />, color: "#a78bfa", bg: "rgba(167,139,250,0.1)", count: uiPersons.length },
     { key: "biz", label: "商务人员", icon: <PieChartOutlined />, color: "#f59e0b", bg: "rgba(245,158,11,0.1)", count: businesses.length },
   ];
@@ -168,7 +180,7 @@ export default function EmployeeList() {
       <Card className="glass-card" style={{ borderRadius: 12 }}>
         <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
           {
-            key: "dev", label: "开发人员",
+            key: "dev", label: `开发人员 (${total})`,
             children: (
               <>
                 <div style={{ marginBottom: 16 }}>
@@ -192,7 +204,8 @@ export default function EmployeeList() {
                 <div style={{ marginBottom: 16 }}>
                   <Button type="primary" icon={<PlusOutlined />} onClick={() => { uiForm.resetFields(); setUIOpen(true); }}>添加UI人员</Button>
                 </div>
-                <Table dataSource={uiPersons} columns={uiColumns} rowKey="id" size="middle" pagination={false} />
+                <Table dataSource={uiPersons} columns={uiColumns} rowKey="id" size="middle"
+                  pagination={{ pageSize: 20, showSizeChanger: true, pageSizeOptions: ["10", "20", "50"], showTotal: (t: number) => `共 ${t} 人` }} />
               </>
             ),
           },
@@ -203,7 +216,8 @@ export default function EmployeeList() {
                 <div style={{ marginBottom: 16 }}>
                   <Button type="primary" icon={<PlusOutlined />} onClick={() => { bizForm.resetFields(); setBizOpen(true); }}>添加商务人员</Button>
                 </div>
-                <Table dataSource={businesses} columns={bizColumns} rowKey="id" size="middle" pagination={false} />
+                <Table dataSource={businesses} columns={bizColumns} rowKey="id" size="middle"
+                  pagination={{ pageSize: 20, showSizeChanger: true, pageSizeOptions: ["10", "20", "50"], showTotal: (t: number) => `共 ${t} 人` }} />
               </>
             ),
           },
