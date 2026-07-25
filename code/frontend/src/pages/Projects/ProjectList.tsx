@@ -132,9 +132,6 @@ export default function ProjectList() {
           columns={columns}
           rowKey="id"
           size="middle"
-          expandable={{
-            rowExpandable: (r: any) => r.children && r.children.length > 0,
-          }}
           pagination={{
             current: page,
             pageSize: pageSize,
