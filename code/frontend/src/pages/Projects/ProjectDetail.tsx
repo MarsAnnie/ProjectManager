@@ -161,7 +161,7 @@ export default function ProjectDetail() {
     },
     {
       title: "分成比例", dataIndex: "share_ratio", key: "sr",
-      render: (v: any, r: any) => r.role === "开发" ? `${((v || 1) * 100).toFixed(0)}%` : "-",
+      render: (v: any) => `${((v || 1) * 100).toFixed(0)}%`,
     },
     { title: "奖金", dataIndex: "bonus", key: "bonus", render: (v: number) => formatMoney(v) },
     {
