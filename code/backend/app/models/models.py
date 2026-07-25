@@ -3,7 +3,7 @@ from sqlalchemy import (
     Column, Integer, String, Date, DateTime,
     DECIMAL, Boolean, Text, ForeignKey, Float
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 
 from app.database.database import Base
 
@@ -87,7 +87,11 @@ class Project(Base):
     costs = relationship("ProjectCost", back_populates="project")
     payments = relationship("Payment", back_populates="project")
     snapshots = relationship("CostSnapshot", back_populates="project")
-    children = relationship("Project", backref="parent", remote_side=[id])
+    children = relationship(
+        "Project",
+        backref=backref("parent", remote_side=[id]),
+        foreign_keys="Project.parent_project_id",
+    )
 
 
 class ProjectMember(Base):
