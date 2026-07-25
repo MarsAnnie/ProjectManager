@@ -102,7 +102,25 @@ export default function EmployeeList() {
     { title: "级别", dataIndex: "level", key: "level" },
     { title: "类型", dataIndex: "employment_type", key: "type", render: (v: string, r: any) => statusTag(v, r.status) },
     { title: "状态", dataIndex: "status", key: "status", render: (v: string) => <Tag className={v === "离职" ? "status-tag-resigned" : "status-tag-active"}>{v}</Tag> },
-    { title: "工资", dataIndex: "salary", key: "salary", render: (v: number) => v > 0 ? `¥${v?.toLocaleString()}` : "-" },
+    {
+      title: "工资", dataIndex: "salary", key: "salary",
+      render: (v: number, r: any) => {
+        if (!v || v <= 0) return "-";
+        if (r.employment_type === "试用") {
+          return (
+            <span>
+              <span style={{ textDecoration: "line-through", color: "#6b7280", marginRight: 6 }}>
+                ¥{v.toLocaleString()}
+              </span>
+              <span style={{ color: "#f59e0b", fontWeight: 600 }}>
+                ¥{(v * 0.8).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </span>
+            </span>
+          );
+        }
+        return `¥${v.toLocaleString()}`;
+      },
+    },
     { title: "操作", key: "act", render: (_: any, r: any) => <Button type="link" size="small" onClick={() => openEdit(r)}>修改</Button> },
   ];
 
