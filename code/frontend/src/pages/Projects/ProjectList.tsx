@@ -142,7 +142,7 @@ export default function ProjectList() {
                 pagination={false}
                 columns={[
                   { title: "增项名称", dataIndex: "project_name", key: "n", render: (v: string, rr: any) => (
-                    <a onClick={() => navigate(`/projects/${rr.id}`)}>↘ {v}</a>
+                    <a onClick={() => navigate(`/projects/${rr.id}`)}>{v}</a>
                   )},
                   { title: "金额", dataIndex: "amount", key: "a", render: (v: number) => formatMoney(v), width: 120 },
                   { title: "状态", dataIndex: "status", key: "s", width: 100, render: (v: string) => {

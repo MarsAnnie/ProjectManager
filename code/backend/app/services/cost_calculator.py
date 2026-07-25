@@ -111,7 +111,8 @@ class CostCalculator:
         profit_rate = float(profit / project.amount) if project.amount > 0 else 0.0
 
         # Commission pool split (UI vs Dev)
-        commission_pool = calculate_bonus_pool(project.amount)
+        is_sub = project.parent_project_id is not None
+        commission_pool = calculate_bonus_pool(project.amount, is_sub=is_sub)
         ui_commission = Decimal("0")
         dev_commission = commission_pool
         if project.ui_commission_rate and project.ui_commission_rate > 0:
@@ -128,7 +129,8 @@ class CostCalculator:
             "profit": float(profit),
             "profit_rate": profit_rate,
             "commission_pool": float(commission_pool),
-            "commission_rate": float(get_bonus_rate(project.amount)),
+            "commission_rate": float(get_bonus_rate(project.amount, is_sub=is_sub)),
+            "is_sub_project": is_sub,
             "ui_commission_rate": float(project.ui_commission_rate or 0),
             "ui_commission": float(ui_commission),
             "dev_commission": float(dev_commission),

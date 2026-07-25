@@ -5,6 +5,9 @@ import api from "../../api/client";
 
 interface DashboardData {
   project_count: number;
+  main_project_count: number;
+  total_project_count: number;
+  in_progress_count: number;
   contract_amount: number;
   total_cost: number;
   total_profit: number;
@@ -52,8 +55,10 @@ export default function Dashboard() {
   if (!data) return null;
 
   const statCards = [
-    { label: "项目总数", value: data.project_count, color: "#3b82f6" },
-    { label: "合同总金额", value: formatMoney(data.contract_amount), color: "#8b5cf6" },
+    { label: "正在开发", value: data.in_progress_count, color: "#3b82f6" },
+    { label: "主体项目", value: data.main_project_count, color: "#8b5cf6" },
+    { label: "总项目数", value: data.total_project_count, color: "#a78bfa" },
+    { label: "合同总金额", value: formatMoney(data.contract_amount), color: "#60a5fa" },
     { label: "项目总成本", value: formatMoney(data.total_cost), color: "#f59e0b" },
     { label: "已实现利润", value: formatMoney(data.total_profit), color: "#2dd4bf" },
     { label: "当月可分款", value: formatMoney(data.monthly_distributable), color: "#a78bfa" },
@@ -136,7 +141,7 @@ export default function Dashboard() {
 
       <Row gutter={[16, 16]} style={{ marginBottom: 32 }}>
         {statCards.map((card) => (
-          <Col xs={24} sm={12} lg={8} xl={3} key={card.label}>
+          <Col xs={24} sm={12} md={8} lg={6} xl={4} key={card.label}>
             <Card className="glass-card" style={{ borderRadius: 12 }}>
               <div className="stat-label">{card.label}</div>
               <div className="stat-number" style={{ color: card.color }}>

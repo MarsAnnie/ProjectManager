@@ -216,6 +216,9 @@ class PaymentResponse(PaymentBase):
 
 class DashboardResponse(BaseModel):
     project_count: int = 0
+    main_project_count: int = 0
+    total_project_count: int = 0
+    in_progress_count: int = 0
     contract_amount: Decimal = Field(default=0, max_digits=14, decimal_places=2)
     total_cost: Decimal = Field(default=0, max_digits=14, decimal_places=2)
     total_profit: Decimal = Field(default=0, max_digits=14, decimal_places=2)

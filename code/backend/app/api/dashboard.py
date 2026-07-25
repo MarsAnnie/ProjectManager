@@ -22,6 +22,17 @@ def get_dashboard(db: Session = Depends(get_db)):
     ).all()
 
     project_count = len(projects)
+    # 总项目数（含增项）
+    total_project_count = db.query(Project).filter(
+        Project.deleted_at.is_(None)
+    ).count()
+    # 正在开发项目数
+    in_progress_statuses = ["开发中", "开发准备", "UI确认", "测试", "待验收"]
+    in_progress_count = db.query(Project).filter(
+        Project.deleted_at.is_(None),
+        Project.status.in_(in_progress_statuses)
+    ).count()
+    main_project_count = project_count
     contract_amount = sum((p.amount for p in projects), Decimal("0"))
     total_cost = sum(
         (db.query(ProjectCost).filter(ProjectCost.project_id == p.id).first().total_cost
@@ -91,6 +102,9 @@ def get_dashboard(db: Session = Depends(get_db)):
 
     return {
         "project_count": project_count,
+        "main_project_count": main_project_count,
+        "total_project_count": total_project_count,
+        "in_progress_count": in_progress_count,
         "contract_amount": contract_amount,
         "total_cost": total_cost,
         "total_profit": total_profit,
