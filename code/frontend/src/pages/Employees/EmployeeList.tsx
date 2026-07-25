@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Table, Button, Modal, Form, Input, Select, InputNumber, Row, Col, Tag, Card, Tabs, message } from "antd";
-import { PlusOutlined, TeamOutlined, UserOutlined, PieChartOutlined } from "@ant-design/icons";
+import { PlusOutlined, TeamOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/client";
 
@@ -91,8 +91,6 @@ export default function EmployeeList() {
     { key: "试用", label: "试用", icon: null, color: "#3b82f6", bg: "rgba(59,130,246,0.1)", count: allEmployees.filter((e: any) => e.employment_type === "试用" && e.status === "在职").length },
     { key: "实习", label: "实习", icon: null, color: "#22c55e", bg: "rgba(34,197,94,0.1)", count: allEmployees.filter((e: any) => e.employment_type === "实习" && e.status === "在职").length },
     { key: "离职", label: "离职", icon: null, color: "#ef4444", bg: "rgba(239,68,68,0.1)", count: allEmployees.filter((e: any) => e.status === "离职").length },
-    { key: "ui", label: "UI人员", icon: <UserOutlined />, color: "#a78bfa", bg: "rgba(167,139,250,0.1)", count: uiPersons.length },
-    { key: "biz", label: "商务人员", icon: <PieChartOutlined />, color: "#f59e0b", bg: "rgba(245,158,11,0.1)", count: businesses.length },
   ];
 
   // ═══ Dev columns ═══
@@ -178,9 +176,6 @@ export default function EmployeeList() {
                 background: filter === card.key ? card.bg : undefined,
               }}
               onClick={() => {
-                if (card.key === "ui") { setActiveTab("ui"); return; }
-                if (card.key === "biz") { setActiveTab("biz"); return; }
-                if (card.key === "在职") { setActiveTab("dev"); }
                 setFilter(filter === card.key ? "在职" : card.key);
               }}
               bodyStyle={{ padding: "14px 8px" }}
