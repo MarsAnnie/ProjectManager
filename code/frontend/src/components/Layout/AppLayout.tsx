@@ -4,8 +4,6 @@ import {
   DashboardOutlined,
   ProjectOutlined,
   TeamOutlined,
-  UserOutlined,
-  PieChartOutlined,
 } from "@ant-design/icons";
 
 const { Sider, Content, Header } = Layout;
@@ -14,8 +12,6 @@ const menuItems = [
   { key: "/", icon: <DashboardOutlined />, label: "经营驾驶舱" },
   { key: "/projects", icon: <ProjectOutlined />, label: "项目管理" },
   { key: "/employees", icon: <TeamOutlined />, label: "人员管理" },
-  { key: "/ui-persons", icon: <UserOutlined />, label: "UI人员管理" },
-  { key: "/business", icon: <PieChartOutlined />, label: "商务人员管理" },
 ];
 
 export default function AppLayout() {
