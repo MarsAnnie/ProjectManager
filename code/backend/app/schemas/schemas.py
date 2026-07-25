@@ -88,6 +88,10 @@ class ProjectBase(BaseModel):
     theoretical_delivery_date: Optional[datetime.date] = None
     actual_delivery_date: Optional[datetime.date] = None
     acceptance_date: Optional[datetime.date] = None
+    ui_person_name: Optional[str] = None
+    ui_commission_rate: Optional[Decimal] = None
+    needs_ui: bool = False
+    notes: Optional[str] = None
 
 
 class ProjectCreate(ProjectBase):
@@ -109,6 +113,10 @@ class ProjectUpdate(BaseModel):
     theoretical_delivery_date: Optional[datetime.date] = None
     actual_delivery_date: Optional[datetime.date] = None
     acceptance_date: Optional[datetime.date] = None
+    ui_person_name: Optional[str] = None
+    ui_commission_rate: Optional[Decimal] = None
+    needs_ui: Optional[bool] = None
+    notes: Optional[str] = None
 
 
 class ProjectResponse(ProjectBase):
@@ -236,6 +244,22 @@ class QuoteHealthResponse(BaseModel):
     suggested_min_price: Decimal
     health_status: str  # healthy / warning / danger
     health_label: str
+
+
+# ── UI Person ──
+
+class UIPersonBase(BaseModel):
+    name: str
+    remark: Optional[str] = None
+
+
+class UIPersonCreate(UIPersonBase):
+    pass
+
+
+class UIPersonResponse(UIPersonBase):
+    id: int
+    model_config = {"from_attributes": True}
 
 
 # ── Project Profit Ranking ──

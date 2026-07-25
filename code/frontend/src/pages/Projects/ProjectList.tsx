@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Table, Button, Modal, Form, Input, Select, InputNumber, Row, Col, Card, Tag, message } from "antd";
+import { Table, Button, Modal, Form, Input, Select, InputNumber, Row, Col, Card, Tag, Switch, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/client";
@@ -25,6 +25,7 @@ export default function ProjectList() {
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm();
   const [managers, setManagers] = useState([]);
+  const [uiPersons, setUIPersons] = useState([]);
   const navigate = useNavigate();
 
   const fetchData = (p = page, ps = pageSize) => {
@@ -37,6 +38,7 @@ export default function ProjectList() {
   useEffect(() => {
     fetchData();
     api.get("/business-managers").then((r) => setManagers(r.data));
+    api.get("/ui-persons").then((r) => setUIPersons(r.data));
   }, []);
 
   const handleCreate = async () => {
@@ -196,6 +198,39 @@ export default function ProjectList() {
           </Row>
           <Form.Item name="status" label="项目状态" initialValue="待签约">
             <Select options={STATUS_OPTIONS} />
+          </Form.Item>
+          <Form.Item name="needs_ui" label="是否需要UI" valuePropName="checked" initialValue={false}>
+            <Switch checkedChildren="需要" unCheckedChildren="不需要" />
+          </Form.Item>
+          <Form.Item noStyle shouldUpdate={(prev, cur) => prev.needs_ui !== cur.needs_ui}>
+            {({ getFieldValue }) =>
+              getFieldValue("needs_ui") ? (
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item name="ui_person_name" label="UI负责人">
+                      <Select
+                        placeholder="选择或输入UI人员"
+                        showSearch
+                        allowClear
+                        options={uiPersons.map((u: any) => ({ value: u.name, label: u.name }))}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item name="ui_commission_rate" label="UI提成比例">
+                      <Select placeholder="选择提成比例" options={[
+                        { value: 0.05, label: "5%" },
+                        { value: 0.07, label: "7%" },
+                        { value: 0.10, label: "10%" },
+                      ]} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              ) : null
+            }
+          </Form.Item>
+          <Form.Item name="notes" label="备注">
+            <Input.TextArea rows={2} placeholder="是否上架、特殊要求等" />
           </Form.Item>
         </Form>
       </Modal>

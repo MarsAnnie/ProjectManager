@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Card, Descriptions, Tag, Button, Table, Spin, Row, Col, Timeline,
-  Modal, Form, Select, InputNumber, Input, message, Steps
+  Modal, Form, Select, InputNumber, Input, Switch, message, Steps
 } from "antd";
 import api from "../../api/client";
 
@@ -25,6 +25,7 @@ export default function ProjectDetail() {
   const [memberOpen, setMemberOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
+  const [uiPersons, setUIPersons] = useState<any[]>([]);
   const [memberForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const [costData, setCostData] = useState<any>(null);
@@ -42,6 +43,7 @@ export default function ProjectDetail() {
     api.get("/employees", { params: { page_size: 200 } }).then((r) => {
       setEmployees(r.data.items || []);
     });
+    api.get("/ui-persons").then((r) => setUIPersons(r.data));
   }, [id]);
 
   const calcCost = async () => {
@@ -222,6 +224,27 @@ export default function ProjectDetail() {
                     <span style={{ color: item.color, fontVariantNumeric: "tabular-nums" }}>{formatMoney(item.value)}</span>
                   </div>
                 ))}
+                {costData.commission_pool > 0 && (
+                  <div style={{ marginTop: 12, padding: 12, background: "rgba(245,158,11,0.08)", borderRadius: 8 }}>
+                    <div style={{ fontSize: 12, color: "#8b949e", marginBottom: 6 }}>提成池拆分 (费率 {(costData.commission_rate * 100).toFixed(0)}%)</div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+                      <span>提成池总额</span>
+                      <span style={{ color: "#f59e0b", fontWeight: 600 }}>{formatMoney(costData.commission_pool)}</span>
+                    </div>
+                    {costData.ui_commission_rate > 0 && (
+                      <>
+                        <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+                          <span>UI分成 ({(costData.ui_commission_rate * 100).toFixed(0)}%)</span>
+                          <span style={{ color: "#a78bfa" }}>{formatMoney(costData.ui_commission)}</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+                          <span>开发分成</span>
+                          <span style={{ color: "#60a5fa" }}>{formatMoney(costData.dev_commission)}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
                 <div style={{ marginTop: 12, padding: 12, background: "rgba(45,212,191,0.1)", borderRadius: 8 }}>
                   <span>利润率：</span>
                   <strong style={{ color: costData.profit_rate >= 0.2 ? "#2dd4bf" : "#ef4444", fontSize: 18 }}>
@@ -330,6 +353,35 @@ export default function ProjectDetail() {
               </Form.Item>
             </Col>
           </Row>
+          <Form.Item name="needs_ui" label="是否需要UI" valuePropName="checked">
+            <Switch checkedChildren="需要" unCheckedChildren="不需要" />
+          </Form.Item>
+          <Form.Item noStyle shouldUpdate={(prev: any, cur: any) => prev.needs_ui !== cur.needs_ui}>
+            {({ getFieldValue }) =>
+              getFieldValue("needs_ui") ? (
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item name="ui_person_name" label="UI负责人">
+                      <Select placeholder="选择或输入UI人员" showSearch allowClear
+                        options={uiPersons.map((u: any) => ({ value: u.name, label: u.name }))} />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item name="ui_commission_rate" label="UI提成比例">
+                      <Select placeholder="选择提成比例" options={[
+                        { value: 0.05, label: "5%" },
+                        { value: 0.07, label: "7%" },
+                        { value: 0.10, label: "10%" },
+                      ]} />
+                    </Form.Item>
+                  </Col>
+                </Row>
+              ) : null
+            }
+          </Form.Item>
+          <Form.Item name="notes" label="备注">
+            <Input.TextArea rows={2} placeholder="是否上架、特殊要求等" />
+          </Form.Item>
         </Form>
       </Modal>
     </div>

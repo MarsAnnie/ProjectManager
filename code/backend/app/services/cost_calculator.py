@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.models.models import (
     Project, ProjectMember, ProjectCost, CostSnapshot, Employee
 )
+from app.services.bonus_calculator import calculate_bonus_pool, get_bonus_rate
 
 
 class CostCalculator:
@@ -104,6 +105,14 @@ class CostCalculator:
         profit = project.amount - total_cost
         profit_rate = float(profit / project.amount) if project.amount > 0 else 0.0
 
+        # Commission pool split (UI vs Dev)
+        commission_pool = calculate_bonus_pool(project.amount)
+        ui_commission = Decimal("0")
+        dev_commission = commission_pool
+        if project.ui_commission_rate and project.ui_commission_rate > 0:
+            ui_commission = commission_pool * project.ui_commission_rate
+            dev_commission = commission_pool - ui_commission
+
         return {
             "project_id": project_id,
             "salary_cost": float(salary_cost),
@@ -113,6 +122,11 @@ class CostCalculator:
             "total_cost": float(total_cost),
             "profit": float(profit),
             "profit_rate": profit_rate,
+            "commission_pool": float(commission_pool),
+            "commission_rate": float(get_bonus_rate(project.amount)),
+            "ui_commission_rate": float(project.ui_commission_rate or 0),
+            "ui_commission": float(ui_commission),
+            "dev_commission": float(dev_commission),
             "detail": detail,
         }
 

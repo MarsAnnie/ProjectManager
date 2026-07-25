@@ -7,6 +7,8 @@ import ProjectList from "./pages/Projects/ProjectList";
 import ProjectDetail from "./pages/Projects/ProjectDetail";
 import EmployeeList from "./pages/Employees/EmployeeList";
 import EmployeeDetail from "./pages/Employees/EmployeeDetail";
+import UIPersonList from "./pages/Employees/UIPersonList";
+import BusinessList from "./pages/Employees/BusinessList";
 
 const darkTheme = {
   algorithm: theme.darkAlgorithm,
@@ -55,6 +57,8 @@ function App() {
             <Route path="projects/:id" element={<ProjectDetail />} />
             <Route path="employees" element={<EmployeeList />} />
             <Route path="employees/:id" element={<EmployeeDetail />} />
+            <Route path="ui-persons" element={<UIPersonList />} />
+            <Route path="business" element={<BusinessList />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -44,6 +44,16 @@ class BusinessManager(Base):
     projects = relationship("Project", back_populates="business_manager")
 
 
+class UIPerson(Base):
+    __tablename__ = "ui_persons"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(50), nullable=False, comment="姓名")
+    remark = Column(Text, comment="备注")
+    deleted_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
 class Project(Base):
     __tablename__ = "projects"
 
@@ -62,6 +72,10 @@ class Project(Base):
     theoretical_delivery_date = Column(Date, comment="理论交付时间")
     actual_delivery_date = Column(Date, comment="实际交付时间")
     acceptance_date = Column(Date, comment="验收时间")
+    ui_person_name = Column(String(50), comment="UI负责人")
+    ui_commission_rate = Column(DECIMAL(3, 2), comment="UI提成比例(0.05/0.07/0.10)")
+    needs_ui = Column(Boolean, default=False, comment="是否需要UI")
+    notes = Column(Text, comment="备注(上架/要求等)")
     deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     updated_at = Column(

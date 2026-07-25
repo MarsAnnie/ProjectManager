@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.database.database import init_db
-from app.api import employees, projects, dashboard, business, import_api
+from app.api import employees, projects, dashboard, business, import_api, ui_persons
 
 app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION)
 
@@ -18,7 +18,7 @@ app.add_middleware(
 app.include_router(employees.router)
 app.include_router(projects.router)
 app.include_router(dashboard.router)
-app.include_router(import_api.router)
+app.include_router(ui_persons.router)
 app.include_router(business.router)
 
 
