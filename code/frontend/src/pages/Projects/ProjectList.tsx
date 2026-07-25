@@ -140,6 +140,7 @@ export default function ProjectList() {
                 rowKey="id"
                 size="small"
                 pagination={false}
+                expandable={false}
                 columns={[
                   { title: "增项名称", dataIndex: "project_name", key: "n", render: (v: string, rr: any) => (
                     <a onClick={() => navigate(`/projects/${rr.id}`)}>{v}</a>
