@@ -30,12 +30,14 @@ export default function ProjectList() {
 
   const fetchData = (p = page, ps = pageSize) => {
     api.get("/projects", { params: { page: p, page_size: ps } }).then((r) => {
-      // AntD tree data: 只保留有子项目的children字段, 空数组改为undefined
-      const cleaned = r.data.items.map((p: any) => ({
-        ...p,
-        children: p.children && p.children.length > 0 ? p.children : undefined,
-      }));
-      setProjects(cleaned);
+      // 递归清理: 空children数组改为undefined, AntD不显示展开图标
+      const cleanChildren = (proj: any): any => ({
+        ...proj,
+        children: proj.children && proj.children.length > 0
+          ? proj.children.map(cleanChildren)
+          : undefined,
+      });
+      setProjects(r.data.items.map(cleanChildren));
       setTotal(r.data.total);
     });
   };
