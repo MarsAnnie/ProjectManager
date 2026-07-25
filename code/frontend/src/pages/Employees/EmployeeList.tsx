@@ -198,7 +198,7 @@ export default function EmployeeList() {
       <Card className="glass-card" style={{ borderRadius: 12 }}>
         <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
           {
-            key: "dev", label: `开发人员 (${total})`,
+            key: "dev", label: `开发人员 (${allEmployees.length})`,
             children: (
               <>
                 <div style={{ marginBottom: 16 }}>
