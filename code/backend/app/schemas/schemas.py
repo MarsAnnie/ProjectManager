@@ -1,7 +1,16 @@
 import datetime
 from decimal import Decimal
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from typing import Optional, List, Generic, TypeVar
+from pydantic import BaseModel, Field, field_validator
+
+T = TypeVar("T")
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    items: List[T] = []
+    total: int = 0
+    page: int = 1
+    page_size: int = 20
 
 
 # ── Employee ──
@@ -112,6 +121,11 @@ class ProjectResponse(ProjectBase):
 
     model_config = {"from_attributes": True}
 
+    @field_validator("children", mode="before")
+    @classmethod
+    def _none_to_empty(cls, v):
+        return v or []
+
 
 class ProjectDetailResponse(ProjectResponse):
     members: List["ProjectMemberResponse"] = []
@@ -201,6 +215,11 @@ class DashboardResponse(BaseModel):
     unpaid_amount: Decimal = Field(default=0, max_digits=14, decimal_places=2)
     payment_rate: float = 0.0
     estimated_30day_income: Decimal = Field(default=0, max_digits=14, decimal_places=2)
+    # 当月经营统计
+    monthly_distributable: Decimal = Field(default=0, max_digits=14, decimal_places=2)
+    monthly_profit: Decimal = Field(default=0, max_digits=14, decimal_places=2)
+    monthly_salary_total: Decimal = Field(default=0, max_digits=14, decimal_places=2)
+    monthly_commission_total: Decimal = Field(default=0, max_digits=14, decimal_places=2)
 
 
 # ── Quote Health Check ──

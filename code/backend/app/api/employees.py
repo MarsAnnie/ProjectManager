@@ -4,15 +4,17 @@ from typing import List
 
 from app.database.database import get_db
 from app.models.models import Employee
-from app.schemas.schemas import EmployeeCreate, EmployeeUpdate, EmployeeResponse
+from app.schemas.schemas import EmployeeCreate, EmployeeUpdate, EmployeeResponse, PaginatedResponse
 
 router = APIRouter(prefix="/api/employees", tags=["employees"])
 
 
-@router.get("", response_model=List[EmployeeResponse])
+@router.get("", response_model=PaginatedResponse[EmployeeResponse])
 def list_employees(
     status: str | None = Query(None),
     employment_type: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=200),
     db: Session = Depends(get_db),
 ):
     q = db.query(Employee).filter(Employee.deleted_at.is_(None))
@@ -20,7 +22,9 @@ def list_employees(
         q = q.filter(Employee.status == status)
     if employment_type:
         q = q.filter(Employee.employment_type == employment_type)
-    return q.order_by(Employee.name).all()
+    total = q.count()
+    items = q.order_by(Employee.name).offset((page - 1) * page_size).limit(page_size).all()
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
 @router.get("/{employee_id}", response_model=EmployeeResponse)

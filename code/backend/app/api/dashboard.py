@@ -1,14 +1,17 @@
 import datetime
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from decimal import Decimal
 
 from app.database.database import get_db
-from app.models.models import Project, ProjectCost, Payment
-from app.schemas.schemas import DashboardResponse, ProjectProfitItem
+from app.models.models import Project, ProjectCost, Payment, Employee, ProjectMember
+from app.schemas.schemas import DashboardResponse
 from app.services.cost_calculator import CostCalculator
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
+
+COST_RATIO = Decimal("0.35")
 
 
 @router.get("", response_model=DashboardResponse)
@@ -28,7 +31,6 @@ def get_dashboard(db: Session = Depends(get_db)):
     total_profit = contract_amount - total_cost
     overall_profit_rate = float(total_profit / contract_amount) if contract_amount > 0 else 0.0
 
-    # Unpaid amount
     total_paid = Decimal("0")
     for p in projects:
         paid = db.query(Payment).filter(
@@ -40,7 +42,6 @@ def get_dashboard(db: Session = Depends(get_db)):
     unpaid = contract_amount - total_paid
     payment_rate = float(total_paid / contract_amount) if contract_amount > 0 else 0.0
 
-    # Estimated 30-day income
     today = datetime.date.today()
     cutoff = today + datetime.timedelta(days=30)
     upcoming_payments = db.query(Payment).filter(
@@ -51,6 +52,43 @@ def get_dashboard(db: Session = Depends(get_db)):
     ).all()
     estimated_30day = sum((p.payment_amount for p in upcoming_payments), Decimal("0"))
 
+    # ── 当月可分款 ──
+    first_of_month = today.replace(day=1)
+    monthly_distributable = Decimal("0")
+    all_projects = db.query(Project).filter(
+        Project.deleted_at.is_(None),
+        Project.parent_project_id.is_(None)
+    ).all()
+    for p in all_projects:
+        payments = db.query(Payment).filter(
+            Payment.project_id == p.id,
+            Payment.deleted_at.is_(None)
+        ).order_by(Payment.payment_stage.desc()).all()
+        if not payments:
+            continue
+        last_payment = payments[0]
+        if (
+            last_payment.status == "已到账"
+            and last_payment.actual_payment_date
+            and last_payment.actual_payment_date >= first_of_month
+            and last_payment.actual_payment_date <= today
+        ):
+            monthly_distributable += p.amount
+
+    # ── 当月利润 = 可分款 × 35% - 人员工资总和 - 提成总和 ──
+    monthly_salary_total = db.query(func.coalesce(func.sum(Employee.salary), 0)).filter(
+        Employee.deleted_at.is_(None),
+        Employee.status == "在职"
+    ).scalar() or Decimal("0")
+
+    monthly_commission_total = Decimal("0")
+
+    monthly_profit = (
+        monthly_distributable * COST_RATIO
+        - monthly_salary_total
+        - monthly_commission_total
+    )
+
     return {
         "project_count": project_count,
         "contract_amount": contract_amount,
@@ -60,6 +98,10 @@ def get_dashboard(db: Session = Depends(get_db)):
         "unpaid_amount": unpaid,
         "payment_rate": payment_rate,
         "estimated_30day_income": estimated_30day,
+        "monthly_distributable": monthly_distributable,
+        "monthly_profit": monthly_profit,
+        "monthly_salary_total": monthly_salary_total,
+        "monthly_commission_total": monthly_commission_total,
     }
 
 

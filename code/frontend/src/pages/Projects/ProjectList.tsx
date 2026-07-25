@@ -19,12 +19,20 @@ const formatMoney = (v: number) => `¥${v?.toLocaleString() ?? "0"}`;
 
 export default function ProjectList() {
   const [projects, setProjects] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [open, setOpen] = useState(false);
   const [form] = Form.useForm();
   const [managers, setManagers] = useState([]);
   const navigate = useNavigate();
 
-  const fetchData = () => api.get("/projects").then((r) => setProjects(r.data));
+  const fetchData = (p = page, ps = pageSize) => {
+    api.get("/projects", { params: { page: p, page_size: ps } }).then((r) => {
+      setProjects(r.data.items);
+      setTotal(r.data.total);
+    });
+  };
 
   useEffect(() => {
     fetchData();
@@ -82,9 +90,12 @@ export default function ProjectList() {
     },
     {
       title: "状态", dataIndex: "status", key: "status",
-      render: (v: string) => (
-        <Tag color={v === "完成" ? "green" : v === "已交付" ? "blue" : "default"}>{v}</Tag>
-      ),
+      render: (v: string) => {
+        const cls = ["完成", "已交付"].includes(v) ? "status-tag-done"
+          : ["开发中", "开发准备", "UI确认"].includes(v) ? "status-tag-progress"
+          : "status-tag-pending";
+        return <Tag className={cls}>{v}</Tag>;
+      },
     },
     { title: "地区", dataIndex: "region", key: "region" },
     { title: "周期(月)", dataIndex: "project_cycle_month", key: "cycle" },
@@ -106,7 +117,25 @@ export default function ProjectList() {
       </div>
 
       <Card className="glass-card" style={{ borderRadius: 12 }}>
-        <Table dataSource={projects} columns={columns} rowKey="id" size="middle" />
+        <Table
+          dataSource={projects}
+          columns={columns}
+          rowKey="id"
+          size="middle"
+          pagination={{
+            current: page,
+            pageSize: pageSize,
+            total: total,
+            showSizeChanger: true,
+            pageSizeOptions: ["10", "20", "50", "200"],
+            showTotal: (t) => `共 ${t} 个项目`,
+            onChange: (p, ps) => {
+              setPage(p);
+              setPageSize(ps);
+              fetchData(p, ps);
+            },
+          }}
+        />
       </Card>
 
       <Modal

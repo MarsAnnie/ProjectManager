@@ -10,6 +10,7 @@ from app.schemas.schemas import (
     ProjectMemberCreate, ProjectMemberResponse,
     PaymentCreate, PaymentUpdate, PaymentResponse,
     QuoteHealthRequest, QuoteHealthResponse,
+    PaginatedResponse,
 )
 from app.services.quote_checker import check_quote_health
 from app.services.status_engine import auto_advance_status
@@ -18,11 +19,13 @@ from app.services.cost_calculator import CostCalculator
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 
 
-@router.get("", response_model=List[ProjectResponse])
+@router.get("", response_model=PaginatedResponse[ProjectResponse])
 def list_projects(
     status: str | None = Query(None),
     business_manager_id: int | None = Query(None),
     region: str | None = Query(None),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=200),
     db: Session = Depends(get_db),
 ):
     q = db.query(Project).options(
@@ -34,7 +37,9 @@ def list_projects(
         q = q.filter(Project.business_manager_id == business_manager_id)
     if region:
         q = q.filter(Project.region == region)
-    return q.order_by(Project.created_at.desc()).all()
+    total = q.count()
+    items = q.order_by(Project.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
 @router.get("/{project_id}", response_model=ProjectDetailResponse)

@@ -12,6 +12,10 @@ interface DashboardData {
   unpaid_amount: number;
   payment_rate: number;
   estimated_30day_income: number;
+  monthly_distributable: number;
+  monthly_profit: number;
+  monthly_salary_total: number;
+  monthly_commission_total: number;
 }
 
 interface ProfitItem {
@@ -52,6 +56,8 @@ export default function Dashboard() {
     { label: "合同总金额", value: formatMoney(data.contract_amount), color: "#8b5cf6" },
     { label: "项目总成本", value: formatMoney(data.total_cost), color: "#f59e0b" },
     { label: "已实现利润", value: formatMoney(data.total_profit), color: "#2dd4bf" },
+    { label: "当月可分款", value: formatMoney(data.monthly_distributable), color: "#a78bfa" },
+    { label: "当月利润", value: formatMoney(data.monthly_profit), color: data.monthly_profit >= 0 ? "#2dd4bf" : "#ef4444" },
     { label: "未回款金额", value: formatMoney(data.unpaid_amount), color: "#ef4444" },
     { label: "预计30天收入", value: formatMoney(data.estimated_30day_income), color: "#60a5fa" },
   ];
@@ -73,7 +79,7 @@ export default function Dashboard() {
     {
       title: "利润率", dataIndex: "profit_rate", key: "rate",
       render: (v: number) => (
-        <Tag color={v >= 0.2 ? "green" : v >= 0 ? "orange" : "red"}>
+        <Tag className={v >= 0.2 ? "status-tag-done" : v >= 0 ? "status-tag-progress" : "status-tag-resigned"}>
           {(v * 100).toFixed(1)}%
         </Tag>
       ),
@@ -88,7 +94,7 @@ export default function Dashboard() {
     },
     {
       title: "利润率", dataIndex: "profit_rate", key: "rate",
-      render: (v: number) => <Tag color="red">{(v * 100).toFixed(1)}%</Tag>,
+      render: (v: number) => <Tag className="status-tag-resigned">{(v * 100).toFixed(1)}%</Tag>,
     },
   ];
 
@@ -130,7 +136,7 @@ export default function Dashboard() {
 
       <Row gutter={[16, 16]} style={{ marginBottom: 32 }}>
         {statCards.map((card) => (
-          <Col xs={24} sm={12} lg={8} xl={4} key={card.label}>
+          <Col xs={24} sm={12} lg={8} xl={3} key={card.label}>
             <Card className="glass-card" style={{ borderRadius: 12 }}>
               <div className="stat-label">{card.label}</div>
               <div className="stat-number" style={{ color: card.color }}>
