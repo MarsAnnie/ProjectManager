@@ -37,8 +37,11 @@ class CostCalculator:
             if not employee:
                 continue
 
-            # Ensure cost snapshot exists
-            self._ensure_snapshot(project_id, employee)
+            is_dev = member.role in ("开发", None, "")
+
+            # Ensure cost snapshot exists (only for devs)
+            if is_dev:
+                self._ensure_snapshot(project_id, employee)
 
             snapshot = self.db.query(CostSnapshot).filter(
                 CostSnapshot.project_id == project_id,
@@ -48,10 +51,15 @@ class CostCalculator:
             sal = snapshot.salary_at_snapshot if snapshot else employee.salary
             soc = snapshot.social_security_at_snapshot if snapshot else employee.social_security
 
-            member_salary_cost = sal * member.input_month
-            member_social_cost = Decimal("0")
-            if employee.employment_type == "正式":
-                member_social_cost = soc * member.input_month
+            # 只有开发人员计算工资和社保成本
+            if is_dev:
+                member_salary_cost = sal * member.input_month
+                member_social_cost = Decimal("0")
+                if employee.employment_type == "正式":
+                    member_social_cost = soc * member.input_month
+            else:
+                member_salary_cost = Decimal("0")
+                member_social_cost = Decimal("0")
 
             salary_cost += member_salary_cost
             social_security_cost += member_social_cost
@@ -60,6 +68,7 @@ class CostCalculator:
 
             detail.append({
                 "employee_name": employee.name,
+                "role": member.role or "开发",
                 "salary_cost": float(member_salary_cost),
                 "social_security_cost": float(member_social_cost),
                 "bonus": float(member.bonus),
