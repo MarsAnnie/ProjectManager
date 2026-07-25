@@ -29,21 +29,18 @@ export default function ProjectDetail() {
   const [uiPersons, setUIPersons] = useState<any[]>([]);
   const [managers, setManagers] = useState<any[]>([]);
   const [editForm] = Form.useForm();
-  const [memberRows, setMemberRows] = useState<any[]>([{ key: 1, employee_id: null, is_lead: false, is_ui: false, share_ratio: 1 }]);
+  const [memberRows, setMemberRows] = useState<any[]>([{ key: 1, employee_id: null, is_lead: false, share_ratio: 1 }]);
 
   const openMemberModal = () => {
-    // 回显已有成员
     if (project?.members && project.members.length > 0) {
       setMemberRows(project.members.map((m: any) => ({
         key: m.id,
         employee_id: m.employee_id,
         is_lead: m.role === "负责人",
-        is_ui: m.role === "UI",
         share_ratio: Number(m.share_ratio) || 1,
-        _existing: true, // 标记为已存在的成员
       })));
     } else {
-      setMemberRows([{ key: 1, employee_id: null, is_lead: false, is_ui: false, share_ratio: 1 }]);
+      setMemberRows([{ key: 1, employee_id: null, is_lead: false, share_ratio: 1 }]);
     }
     setMemberOpen(true);
   };
@@ -78,7 +75,7 @@ export default function ProjectDetail() {
   const addMemberRow = () => {
     setMemberRows([...memberRows, {
       key: Date.now(),
-      employee_id: null, is_lead: false, is_ui: false, share_ratio: 1,
+      employee_id: null, is_lead: false, share_ratio: 1,
     }]);
   };
 
@@ -97,7 +94,7 @@ export default function ProjectDetail() {
       return;
     }
     // 校验1: 开发人员(非UI)分成总和不超过100%
-    const devs = valid.filter((r) => !r.is_ui);
+    const devs = valid;
     const totalRatio = devs.reduce((sum, r) => sum + (Number(r.share_ratio) || 0), 0);
     if (totalRatio > 1.001) {
       message.error(`开发分成比例总和 ${(totalRatio * 100).toFixed(0)}% 超过100%`);
@@ -117,7 +114,7 @@ export default function ProjectDetail() {
     const payload = valid.map((r) => ({
       project_id: Number(id),
       employee_id: r.employee_id,
-      role: r.is_lead ? "负责人" : r.is_ui ? "UI" : "开发",
+      role: r.is_lead ? "负责人" : "开发",
       share_ratio: r.share_ratio,
     }));
     // 先移除所有已有成员，再批量添加（实现替换效果）
@@ -129,7 +126,7 @@ export default function ProjectDetail() {
     await api.post(`/projects/${id}/members/batch`, payload);
     message.success(`已保存 ${valid.length} 名成员`);
     setMemberOpen(false);
-    setMemberRows([{ key: 1, employee_id: null, is_lead: false, is_ui: false, share_ratio: 1 }]);
+    setMemberRows([{ key: 1, employee_id: null, is_lead: false, share_ratio: 1 }]);
     fetchProject();
   };
 
@@ -362,7 +359,7 @@ export default function ProjectDetail() {
         onOk={addMember}
         onCancel={() => {
           setMemberOpen(false);
-          setMemberRows([{ key: 1, employee_id: null, is_lead: false, is_ui: false, share_ratio: 1 }]);
+          setMemberRows([{ key: 1, employee_id: null, is_lead: false, share_ratio: 1 }]);
         }}
         okText="确认添加"
         cancelText="取消"
@@ -401,23 +398,11 @@ export default function ProjectDetail() {
                   name="lead-radio"
                   checked={v}
                   onChange={() => {
-                    // 清除其他行的负责人标记
                     setMemberRows(memberRows.map((row) => ({
                       ...row,
                       is_lead: row.key === r.key,
                     })));
                   }}
-                  style={{ cursor: "pointer", width: 18, height: 18 }}
-                />
-              ),
-            },
-            {
-              title: "UI", dataIndex: "is_ui", width: 50,
-              render: (v: any, r: any) => (
-                <input
-                  type="checkbox"
-                  checked={v}
-                  onChange={(e) => updateMemberRow(r.key, "is_ui", e.target.checked)}
                   style={{ cursor: "pointer", width: 18, height: 18 }}
                 />
               ),
@@ -448,7 +433,7 @@ export default function ProjectDetail() {
           增加一行
         </Button>
         {(() => {
-          const devs = memberRows.filter((r) => r.employee_id && !r.is_ui);
+          const devs = memberRows.filter((r) => r.employee_id);
           const total = devs.reduce((s, r) => s + (Number(r.share_ratio) || 0), 0);
           const hasLead = memberRows.some((r) => r.employee_id && r.is_lead);
           const color = total > 1.001 ? "#ef4444" : "#2dd4bf";
