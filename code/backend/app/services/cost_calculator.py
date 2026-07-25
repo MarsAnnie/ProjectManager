@@ -52,9 +52,12 @@ class CostCalculator:
             sal = snapshot.salary_at_snapshot if snapshot else employee.salary
             soc = snapshot.social_security_at_snapshot if snapshot else employee.social_security
 
+            # 试用期工资按80%计算
+            salary_ratio = Decimal("0.8") if employee.employment_type == "试用" else Decimal("1")
+
             # 只有开发人员计算工资和社保成本
             if is_dev:
-                member_salary_cost = sal * member.input_month
+                member_salary_cost = sal * member.input_month * salary_ratio
                 member_social_cost = Decimal("0")
                 if employee.employment_type == "正式":
                     member_social_cost = soc * member.input_month
@@ -70,6 +73,8 @@ class CostCalculator:
             detail.append({
                 "employee_name": employee.name,
                 "role": member.role or "开发",
+                "employment_type": employee.employment_type,
+                "salary_ratio": float(salary_ratio),
                 "salary_cost": float(member_salary_cost),
                 "social_security_cost": float(member_social_cost),
                 "bonus": float(member.bonus),
