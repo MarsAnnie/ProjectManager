@@ -325,7 +325,7 @@ export default function ProjectDetail() {
         width={680}
       >
         <div style={{ marginBottom: 8, color: "#8b949e", fontSize: 12 }}>
-          负责人固定占奖金池 10%，UI按项目UI提成比例，开发者按分成比例分配剩余部分。单人项目默认负责人 100%。
+          分成规则：单人项目独享100%。多人项目：负责人固定10%、UI按项目UI比例、开发者按分成比例分配剩余部分。
         </div>
         <Table
           dataSource={memberRows}
