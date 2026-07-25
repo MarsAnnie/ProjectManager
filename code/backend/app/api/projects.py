@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session, joinedload
 from typing import List
 
 from app.database.database import get_db
-from app.models.models import Project, ProjectMember, Payment, Employee
+from app.models.models import Project, ProjectMember, Payment, Employee, ProjectBusinessManager
+from app.core.config import settings
 from app.schemas.schemas import (
     ProjectCreate, ProjectUpdate, ProjectResponse, ProjectDetailResponse,
     ProjectMemberCreate, ProjectMemberResponse,
@@ -30,7 +31,7 @@ def list_projects(
 ):
     q = db.query(Project).options(
         joinedload(Project.children),
-        joinedload(Project.business_manager)
+        joinedload(Project.business_manager_links).joinedload(ProjectBusinessManager.business_manager),
     ).filter(Project.deleted_at.is_(None), Project.parent_project_id.is_(None))
     if status:
         q = q.filter(Project.status == status)
@@ -50,18 +51,36 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
         joinedload(Project.costs),
         joinedload(Project.payments),
         joinedload(Project.children),
-        joinedload(Project.business_manager),
+        joinedload(Project.business_manager_links).joinedload(ProjectBusinessManager.business_manager),
     ).filter(Project.id == project_id, Project.deleted_at.is_(None)).first()
     if not proj:
         raise HTTPException(status_code=404, detail="项目不存在")
     return proj
 
 
+def _sync_business_managers(proj: Project, manager_ids: list[int], db: Session):
+    """替换项目的商务经理关联"""
+    # 删除旧的
+    db.query(ProjectBusinessManager).filter(
+        ProjectBusinessManager.project_id == proj.id
+    ).delete()
+    # 创建新的
+    for bm_id in manager_ids:
+        db.add(ProjectBusinessManager(project_id=proj.id, business_manager_id=bm_id))
+
+
 @router.post("", response_model=ProjectResponse)
 def create_project(data: ProjectCreate, db: Session = Depends(get_db)):
-    proj = Project(**data.model_dump())
+    payload = data.model_dump()
+    manager_ids = payload.pop("business_manager_ids", [])
+    # 工期自动换算项目周期
+    if payload.get("work_days") and not payload.get("project_cycle_month"):
+        payload["project_cycle_month"] = round(payload["work_days"] / settings.WORK_DAYS_PER_MONTH, 2)
+    proj = Project(**payload)
     proj = auto_advance_status(proj)
     db.add(proj)
+    db.flush()
+    _sync_business_managers(proj, manager_ids or [], db)
     db.commit()
     db.refresh(proj)
     return proj
@@ -74,9 +93,17 @@ def update_project(project_id: int, data: ProjectUpdate, db: Session = Depends(g
     ).first()
     if not proj:
         raise HTTPException(status_code=404, detail="项目不存在")
-    for key, val in data.model_dump(exclude_unset=True).items():
+    payload = data.model_dump(exclude_unset=True)
+    manager_ids = payload.pop("business_manager_ids", None)
+    # 工期变更时自动重算项目周期
+    if "work_days" in payload and payload["work_days"]:
+        if "project_cycle_month" not in payload or payload.get("project_cycle_month") is None:
+            payload["project_cycle_month"] = round(payload["work_days"] / settings.WORK_DAYS_PER_MONTH, 2)
+    for key, val in payload.items():
         setattr(proj, key, val)
     proj = auto_advance_status(proj)
+    if manager_ids is not None:
+        _sync_business_managers(proj, manager_ids, db)
     db.commit()
     db.refresh(proj)
     return proj

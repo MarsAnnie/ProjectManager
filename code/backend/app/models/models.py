@@ -41,7 +41,20 @@ class BusinessManager(Base):
     deleted_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
-    projects = relationship("Project", back_populates="business_manager")
+    projects = relationship("ProjectBusinessManager", back_populates="business_manager")
+
+
+class ProjectBusinessManager(Base):
+    __tablename__ = "project_business_managers"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
+    business_manager_id = Column(Integer, ForeignKey("business_managers.id"), nullable=False)
+    share_ratio = Column(DECIMAL(3, 2), comment="分成比例(0.5=50%)")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    project = relationship("Project", back_populates="business_manager_links")
+    business_manager = relationship("BusinessManager")
 
 
 class UIPerson(Base):
@@ -65,6 +78,7 @@ class Project(Base):
     business_manager_id = Column(Integer, ForeignKey("business_managers.id"), comment="商务经理")
     status = Column(String(30), default="待签约", comment="项目状态")
     project_cycle_month = Column(DECIMAL(5, 2), comment="项目周期(月)")
+    work_days = Column(Integer, comment="工期(工作日)")
     parent_project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, comment="父项目ID(增项)")
     contract_date = Column(Date, comment="签约时间")
     ui_confirm_date = Column(Date, comment="UI确认时间")
@@ -82,7 +96,7 @@ class Project(Base):
         DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow
     )
 
-    business_manager = relationship("BusinessManager", back_populates="projects")
+    business_manager_links = relationship("ProjectBusinessManager", back_populates="project", cascade="all, delete-orphan")
     members = relationship("ProjectMember", back_populates="project")
     costs = relationship("ProjectCost", back_populates="project")
     payments = relationship("Payment", back_populates="project")

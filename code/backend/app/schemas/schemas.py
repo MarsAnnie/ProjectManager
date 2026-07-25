@@ -79,8 +79,10 @@ class ProjectBase(BaseModel):
     amount: Decimal = Field(default=0, max_digits=12, decimal_places=2)
     region: Optional[str] = None
     business_manager_id: Optional[int] = None
+    business_manager_ids: List[int] = []
     status: str = "待签约"
     project_cycle_month: Optional[Decimal] = None
+    work_days: Optional[int] = None
     parent_project_id: Optional[int] = None
     contract_date: Optional[datetime.date] = None
     ui_confirm_date: Optional[datetime.date] = None
@@ -117,6 +119,8 @@ class ProjectUpdate(BaseModel):
     ui_commission_rate: Optional[Decimal] = None
     needs_ui: Optional[bool] = None
     notes: Optional[str] = None
+    work_days: Optional[int] = None
+    business_manager_ids: Optional[List[int]] = None
 
 
 class ProjectResponse(ProjectBase):
@@ -124,7 +128,7 @@ class ProjectResponse(ProjectBase):
     deleted_at: Optional[datetime.datetime] = None
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
-    business_manager: Optional[BusinessManagerResponse] = None
+    business_managers: List[BusinessManagerResponse] = []
     children: list["ProjectResponse"] = []
 
     model_config = {"from_attributes": True}
@@ -133,6 +137,22 @@ class ProjectResponse(ProjectBase):
     @classmethod
     def _none_to_empty(cls, v):
         return v or []
+
+    @field_validator("business_managers", mode="before")
+    @classmethod
+    def _extract_managers(cls, v):
+        """Convert ProjectBusinessManager objects to BusinessManager objects"""
+        if v is None:
+            return []
+        result = []
+        for item in v:
+            if hasattr(item, 'business_manager'):
+                bm = item.business_manager
+                if bm:
+                    result.append(bm)
+            elif hasattr(item, 'name'):
+                result.append(item)
+        return result
 
 
 class ProjectDetailResponse(ProjectResponse):

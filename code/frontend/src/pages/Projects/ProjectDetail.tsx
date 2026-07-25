@@ -26,6 +26,7 @@ export default function ProjectDetail() {
   const [editOpen, setEditOpen] = useState(false);
   const [employees, setEmployees] = useState<any[]>([]);
   const [uiPersons, setUIPersons] = useState<any[]>([]);
+  const [managers, setManagers] = useState<any[]>([]);
   const [memberForm] = Form.useForm();
   const [editForm] = Form.useForm();
   const [costData, setCostData] = useState<any>(null);
@@ -44,6 +45,7 @@ export default function ProjectDetail() {
       setEmployees(r.data.items || []);
     });
     api.get("/ui-persons").then((r) => setUIPersons(r.data));
+    api.get("/business-managers").then((r) => setManagers(r.data));
   }, [id]);
 
   const calcCost = async () => {
@@ -123,7 +125,10 @@ export default function ProjectDetail() {
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
         <Button onClick={() => navigate(-1)}>← 返回</Button>
         <Button onClick={() => {
-          editForm.setFieldsValue(project);
+          editForm.setFieldsValue({
+            ...project,
+            business_manager_ids: (project.business_managers || []).map((m: any) => m.id),
+          });
           setEditOpen(true);
         }}>✎ 编辑</Button>
       </div>
@@ -143,7 +148,7 @@ export default function ProjectDetail() {
               </Descriptions.Item>
               <Descriptions.Item label="项目周期">{project.project_cycle_month || "-"} 月</Descriptions.Item>
               <Descriptions.Item label="商务经理">
-                {project.business_manager?.name || "-"}
+                {(project.business_managers || []).map((m: any) => m.name).filter(Boolean).join(" / ") || "-"}
               </Descriptions.Item>
               <Descriptions.Item label="签约时间">{project.contract_date || "-"}</Descriptions.Item>
               <Descriptions.Item label="UI确认">{project.ui_confirm_date || "-"}</Descriptions.Item>
@@ -327,7 +332,12 @@ export default function ProjectDetail() {
             </Col>
             <Col span={8}>
               <Form.Item name="project_cycle_month" label="项目周期(月)">
-                <InputNumber min={0} max={60} step={0.5} placeholder="如 1.5" style={{ width: "100%" }} />
+                <InputNumber min={0} max={60} step={0.1} placeholder="如 2.5" style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="work_days" label="工期(工作日)">
+                <InputNumber min={0} max={365} placeholder="如 55" style={{ width: "100%" }} />
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -336,6 +346,11 @@ export default function ProjectDetail() {
               </Form.Item>
             </Col>
           </Row>
+          <Form.Item name="business_manager_ids" label="商务经理(可多选)">
+            <Select mode="multiple" placeholder="选择一个或多个商务" allowClear style={{ width: "100%" }}
+              options={managers.map((m: any) => ({ value: m.id, label: m.name }))}
+            />
+          </Form.Item>
           <Row gutter={16}>
             <Col span={8}>
               <Form.Item name="contract_date" label="签约时间">

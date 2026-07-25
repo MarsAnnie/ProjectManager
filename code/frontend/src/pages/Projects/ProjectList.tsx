@@ -109,8 +109,11 @@ export default function ProjectList() {
     { title: "地区", dataIndex: "region", key: "region", width: 80 },
     { title: "周期(月)", dataIndex: "project_cycle_month", key: "cycle", width: 80 },
     {
-      title: "商务", dataIndex: ["business_manager", "name"], key: "bm", width: 80,
-      render: (v: string) => v || "-",
+      title: "商务", key: "bm", width: 100,
+      render: (_: any, r: any) => {
+        const names = (r.business_managers || []).map((m: any) => m.name).filter(Boolean);
+        return names.length > 0 ? names.join(" / ") : "-";
+      },
     },
     {
       title: "签约", dataIndex: "contract_date", key: "cd", width: 100,
@@ -192,17 +195,20 @@ export default function ProjectList() {
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item name="project_cycle_month" label="项目周期(月)">
-                <InputNumber min={0} max={60} step={0.5} placeholder="如 1.5 个月" style={{ width: "100%" }} />
+              <Form.Item name="work_days" label="工期(工作日)">
+                <InputNumber min={0} max={365} placeholder="如 55 工作日" style={{ width: "100%" }} />
               </Form.Item>
             </Col>
             <Col span={8}>
-              <Form.Item name="business_manager_id" label="商务经理">
-                <Select placeholder="选择商务" allowClear style={{ width: "100%" }}
-                  options={managers.map((m: any) => ({ value: m.id, label: m.name }))} />
+              <Form.Item name="project_cycle_month" label="项目周期(月)">
+                <InputNumber min={0} max={60} step={0.1} placeholder="自动计算或手动输入" style={{ width: "100%" }} />
               </Form.Item>
             </Col>
           </Row>
+          <Form.Item name="business_manager_ids" label="商务经理(可多选)">
+            <Select mode="multiple" placeholder="选择一个或多个商务" allowClear style={{ width: "100%" }}
+              options={managers.map((m: any) => ({ value: m.id, label: m.name }))} />
+          </Form.Item>
           <Form.Item name="status" label="项目状态" initialValue="待签约">
             <Select options={STATUS_OPTIONS} />
           </Form.Item>
