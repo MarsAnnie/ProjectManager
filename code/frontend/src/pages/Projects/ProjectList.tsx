@@ -30,7 +30,12 @@ export default function ProjectList() {
 
   const fetchData = (p = page, ps = pageSize) => {
     api.get("/projects", { params: { page: p, page_size: ps } }).then((r) => {
-      setProjects(r.data.items);
+      // AntD tree data: 只保留有子项目的children字段, 空数组改为undefined
+      const cleaned = r.data.items.map((p: any) => ({
+        ...p,
+        children: p.children && p.children.length > 0 ? p.children : undefined,
+      }));
+      setProjects(cleaned);
       setTotal(r.data.total);
     });
   };
