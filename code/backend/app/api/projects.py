@@ -145,11 +145,30 @@ def add_member(project_id: int, data: ProjectMemberCreate, db: Session = Depends
     db.add(member)
     db.commit()
     db.refresh(member)
-    # Reload with employee
     member = db.query(ProjectMember).options(
         joinedload(ProjectMember.employee)
     ).filter(ProjectMember.id == member.id).first()
     return member
+
+
+@router.post("/{project_id}/members/batch", response_model=List[ProjectMemberResponse])
+def add_members_batch(project_id: int, members: List[ProjectMemberCreate], db: Session = Depends(get_db)):
+    """批量添加项目成员"""
+    proj = db.query(Project).filter(
+        Project.id == project_id, Project.deleted_at.is_(None)
+    ).first()
+    if not proj:
+        raise HTTPException(status_code=404, detail="项目不存在")
+    created = []
+    for m in members:
+        member = ProjectMember(**m.model_dump())
+        db.add(member)
+        created.append(member)
+    db.commit()
+    ids = [m.id for m in created]
+    return db.query(ProjectMember).options(
+        joinedload(ProjectMember.employee)
+    ).filter(ProjectMember.id.in_(ids)).all()
 
 
 @router.delete("/{project_id}/members/{member_id}")

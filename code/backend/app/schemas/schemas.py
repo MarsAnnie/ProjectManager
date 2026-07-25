@@ -167,7 +167,8 @@ class ProjectDetailResponse(ProjectResponse):
 class ProjectMemberBase(BaseModel):
     project_id: int
     employee_id: int
-    role: Optional[str] = None
+    role: Optional[str] = "开发"
+    share_ratio: Decimal = Field(default=1, max_digits=5, decimal_places=2)
     input_month: Decimal = Field(default=0, max_digits=5, decimal_places=2)
     input_days: int = 0
     bonus: Decimal = Field(default=0, max_digits=10, decimal_places=2)

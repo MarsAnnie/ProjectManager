@@ -4,6 +4,7 @@ import {
   Card, Descriptions, Tag, Button, Table, Spin, Row, Col, Timeline,
   Modal, Form, Select, InputNumber, Input, Switch, message, Steps
 } from "antd";
+import { PlusOutlined } from "@ant-design/icons";
 import api from "../../api/client";
 
 const formatMoney = (v: number) => `¥${Number(v || 0).toLocaleString()}`;
@@ -27,8 +28,8 @@ export default function ProjectDetail() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [uiPersons, setUIPersons] = useState<any[]>([]);
   const [managers, setManagers] = useState<any[]>([]);
-  const [memberForm] = Form.useForm();
   const [editForm] = Form.useForm();
+  const [memberRows, setMemberRows] = useState<any[]>([{ key: 1, employee_id: null, role: "开发", share_ratio: 1 }]);
   const [costData, setCostData] = useState<any>(null);
   const [calcLoading, setCalcLoading] = useState(false);
 
@@ -41,7 +42,7 @@ export default function ProjectDetail() {
 
   useEffect(() => {
     fetchProject();
-    api.get("/employees", { params: { page_size: 200 } }).then((r) => {
+    api.get("/employees", { params: { page_size: 200, status: "在职" } }).then((r) => {
       setEmployees(r.data.items || []);
     });
     api.get("/ui-persons").then((r) => setUIPersons(r.data));
@@ -57,12 +58,37 @@ export default function ProjectDetail() {
     fetchProject();
   };
 
+  const addMemberRow = () => {
+    setMemberRows([...memberRows, {
+      key: Date.now(),
+      employee_id: null, role: "开发", share_ratio: 1,
+    }]);
+  };
+
+  const removeMemberRow = (key: any) => {
+    setMemberRows(memberRows.filter((r) => r.key !== key));
+  };
+
+  const updateMemberRow = (key: any, field: string, value: any) => {
+    setMemberRows(memberRows.map((r) => (r.key === key ? { ...r, [field]: value } : r)));
+  };
+
   const addMember = async () => {
-    const values = await memberForm.validateFields();
-    await api.post(`/projects/${id}/members`, { ...values, project_id: Number(id) });
-    message.success("成员已添加");
+    const valid = memberRows.filter((r) => r.employee_id);
+    if (valid.length === 0) {
+      message.warning("请至少选择一名员工");
+      return;
+    }
+    const payload = valid.map((r) => ({
+      project_id: Number(id),
+      employee_id: r.employee_id,
+      role: r.role,
+      share_ratio: r.share_ratio,
+    }));
+    await api.post(`/projects/${id}/members/batch`, payload);
+    message.success(`已添加 ${valid.length} 名成员`);
     setMemberOpen(false);
-    memberForm.resetFields();
+    setMemberRows([{ key: 1, employee_id: null, role: "开发", share_ratio: 1 }]);
     fetchProject();
   };
 
@@ -88,14 +114,23 @@ export default function ProjectDetail() {
 
   const memberColumns = [
     { title: "员工", dataIndex: ["employee", "name"], key: "emp" },
-    { title: "角色", dataIndex: "role", key: "role" },
-    { title: "投入(月)", dataIndex: "input_month", key: "month" },
-    { title: "投入(天)", dataIndex: "input_days", key: "days" },
-    { title: "开发奖金", dataIndex: "bonus", key: "bonus", render: (v: number) => formatMoney(v) },
-    { title: "产品提成", dataIndex: "product_bonus", key: "pb", render: (v: number) => formatMoney(v) },
-    { title: "操作", key: "actions", render: (_: any, r: any) => (
-      <Button type="link" danger size="small" onClick={() => removeMember(r.id)}>移除</Button>
-    )},
+    {
+      title: "角色", dataIndex: "role", key: "role",
+      render: (v: string) => {
+        const cls = v === "负责人" ? "status-tag-regular" : v === "UI" ? "status-tag-probation" : "status-tag-progress";
+        return <Tag className={cls}>{v || "开发"}</Tag>;
+      },
+    },
+    {
+      title: "分成比例", dataIndex: "share_ratio", key: "sr",
+      render: (v: any, r: any) => r.role === "开发" ? `${((v || 1) * 100).toFixed(0)}%` : "-",
+    },
+    { title: "奖金", dataIndex: "bonus", key: "bonus", render: (v: number) => formatMoney(v) },
+    {
+      title: "操作", key: "actions", render: (_: any, r: any) => (
+        <Button type="link" danger size="small" onClick={() => removeMember(r.id)}>移除</Button>
+      ),
+    },
   ];
 
   // Cost summary table
@@ -280,30 +315,81 @@ export default function ProjectDetail() {
       </Row>
 
       {/* Add Member Modal */}
-      <Modal title="添加项目成员" open={memberOpen} onOk={addMember} onCancel={() => setMemberOpen(false)} okText="确认" cancelText="取消">
-        <Form form={memberForm} layout="vertical">
-          <Form.Item name="employee_id" label="员工" rules={[{ required: true, message: "请选择员工" }]}>
-            <Select placeholder="选择参与该项目的员工" options={employees.map((e: any) => ({ value: e.id, label: `${e.name} (${e.position || "-"})` }))} />
-          </Form.Item>
-          <Form.Item name="role" label="角色" rules={[{ required: true, message: "请选择角色" }]}>
-            <Select placeholder="开发/设计/产品/测试" options={[
-              { value: "开发", label: "开发" }, { value: "设计", label: "设计" },
-              { value: "产品", label: "产品" }, { value: "测试", label: "测试" },
-            ]} />
-          </Form.Item>
-          <Form.Item name="input_month" label="投入月份" rules={[{ required: true, message: "请输入投入月份" }]}>
-            <InputNumber min={0} max={24} step={0.1} placeholder="如 0.5 表示半个月" style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item name="input_days" label="投入天数">
-            <InputNumber min={0} max={365} placeholder="投入的工作日天数" style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item name="bonus" label="开发奖金 (¥)">
-            <InputNumber min={0} prefix="¥" placeholder="项目奖金金额" style={{ width: "100%" }} />
-          </Form.Item>
-          <Form.Item name="product_bonus" label="产品提成 (¥)">
-            <InputNumber min={0} prefix="¥" placeholder="产品/UI提成金额" style={{ width: "100%" }} />
-          </Form.Item>
-        </Form>
+      <Modal
+        title="添加项目成员"
+        open={memberOpen}
+        onOk={addMember}
+        onCancel={() => setMemberOpen(false)}
+        okText="确认添加"
+        cancelText="取消"
+        width={680}
+      >
+        <div style={{ marginBottom: 8, color: "#8b949e", fontSize: 12 }}>
+          负责人固定占奖金池 10%，UI按项目UI提成比例，开发者按分成比例分配剩余部分。单人项目默认负责人 100%。
+        </div>
+        <Table
+          dataSource={memberRows}
+          rowKey="key"
+          size="small"
+          pagination={false}
+          columns={[
+            {
+              title: "员工", dataIndex: "employee_id", width: 200,
+              render: (v: any, r: any) => (
+                <Select
+                  value={v}
+                  placeholder="选择员工"
+                  showSearch
+                  optionFilterProp="label"
+                  style={{ width: "100%" }}
+                  options={employees
+                    .filter((e: any) => e.status === "在职")
+                    .map((e: any) => ({ value: e.id, label: `${e.name} - ${e.position || "-"}` }))}
+                  onChange={(val) => updateMemberRow(r.key, "employee_id", val)}
+                />
+              ),
+            },
+            {
+              title: "角色", dataIndex: "role", width: 120,
+              render: (v: any, r: any) => (
+                <Select
+                  value={v}
+                  style={{ width: "100%" }}
+                  options={[
+                    { value: "负责人", label: "负责人" },
+                    { value: "UI", label: "UI" },
+                    { value: "开发", label: "开发" },
+                  ]}
+                  onChange={(val) => updateMemberRow(r.key, "role", val)}
+                />
+              ),
+            },
+            {
+              title: "分成比例", dataIndex: "share_ratio", width: 130,
+              render: (v: any, r: any) => (
+                <InputNumber
+                  value={v}
+                  min={0}
+                  max={1}
+                  step={0.1}
+                  disabled={r.role !== "开发"}
+                  formatter={(val) => val ? `${(val * 100).toFixed(0)}%` : ""}
+                  parser={(val: any) => (val ? Number(val.replace("%", "")) / 100 : 0)}
+                  onChange={(val) => updateMemberRow(r.key, "share_ratio", val)}
+                />
+              ),
+            },
+            {
+              title: "", key: "act", width: 60,
+              render: (_: any, r: any) => (
+                <Button type="link" danger size="small" onClick={() => removeMemberRow(r.key)}>删除</Button>
+              ),
+            },
+          ]}
+        />
+        <Button type="dashed" onClick={addMemberRow} icon={<PlusOutlined />} style={{ marginTop: 12, width: "100%" }}>
+          增加一行
+        </Button>
       </Modal>
 
       {/* Edit Project Modal */}
