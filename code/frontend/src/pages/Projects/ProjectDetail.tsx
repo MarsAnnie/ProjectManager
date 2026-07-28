@@ -21,6 +21,10 @@ const getBonusTierRate = (amount: number, isSub: boolean): string => {
 };
 
 const STATUS_STEPS = [
+  "未开始", "UI确认", "开发中", "测试中", "已交付", "已分成"
+];
+
+const STATUS_ALL = [
   "未开始", "UI确认", "开发中", "测试中", "已交付", "已分成", "暂停", "退款"
 ];
 
@@ -297,7 +301,6 @@ export default function ProjectDetail() {
         { label: "工资成本", value: costData.salary_cost, color: "#60a5fa" },
         { label: "社保成本", value: costData.social_security_cost, color: "#a78bfa" },
         { label: "开发奖金", value: costData.developer_bonus, color: "#f59e0b" },
-        { label: "产品提成", value: costData.product_bonus, color: "#f97316" },
         { label: "总成本", value: costData.total_cost, color: "#ef4444", bold: true },
         { label: "项目收入", value: Number(project.amount), color: "#2dd4bf", bold: true },
         { label: "项目利润", value: costData.profit, color: costData.profit >= 0 ? "#2dd4bf" : "#ef4444", bold: true },
@@ -311,7 +314,6 @@ export default function ProjectDetail() {
     { title: "工资成本", dataIndex: "salary_cost", key: "sc", render: (v: number) => formatMoney(v) },
     { title: "社保成本", dataIndex: "social_security_cost", key: "ss", render: (v: number) => formatMoney(v) },
     { title: "奖金", dataIndex: "bonus", key: "bo", render: (v: number) => formatMoney(v) },
-    { title: "提成", dataIndex: "product_bonus", key: "pb", render: (v: number) => formatMoney(v) },
   ];
 
   return (
@@ -707,7 +709,7 @@ export default function ProjectDetail() {
             </Col>
             <Col span={8}>
               <Form.Item name="status" label="项目状态">
-                <Select placeholder="选择状态" options={STATUS_STEPS.map((s) => ({ value: s, label: s }))} />
+                <Select placeholder="选择状态" options={STATUS_ALL.map((s) => ({ value: s, label: s }))} />
               </Form.Item>
             </Col>
           </Row>
@@ -877,7 +879,7 @@ export default function ProjectDetail() {
             </Col>
           </Row>
           <Form.Item name="status" label="状态" initialValue="待签约">
-            <Select options={STATUS_STEPS.map((s) => ({ value: s, label: s }))} />
+            <Select options={STATUS_ALL.map((s) => ({ value: s, label: s }))} />
           </Form.Item>
           <Form.Item name="notes" label="备注">
             <Input.TextArea rows={2} placeholder="增项说明" />
