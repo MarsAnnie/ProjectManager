@@ -80,7 +80,7 @@ class ProjectBase(BaseModel):
     region: Optional[str] = None
     business_manager_id: Optional[int] = None
     business_manager_ids: List[int] = []
-    status: str = "待签约"
+    status: str = "未开始"
     project_cycle_month: Optional[Decimal] = None
     work_days: Optional[int] = None
     parent_project_id: Optional[int] = None
@@ -93,6 +93,7 @@ class ProjectBase(BaseModel):
     ui_person_name: Optional[str] = None
     ui_commission_rate: Optional[Decimal] = None
     needs_ui: bool = False
+    payment_ratio: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -118,6 +119,7 @@ class ProjectUpdate(BaseModel):
     ui_person_name: Optional[str] = None
     ui_commission_rate: Optional[Decimal] = None
     needs_ui: Optional[bool] = None
+    payment_ratio: Optional[str] = None
     notes: Optional[str] = None
     work_days: Optional[int] = None
     business_manager_ids: Optional[List[int]] = None
@@ -128,7 +130,7 @@ class ProjectResponse(ProjectBase):
     deleted_at: Optional[datetime.datetime] = None
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
-    business_managers: List[BusinessManagerResponse] = []
+    business_managers: List[BusinessManagerResponse] = Field(default=[], validation_alias="business_manager_links")
     children: list["ProjectResponse"] = []
 
     model_config = {"from_attributes": True}
@@ -251,6 +253,8 @@ class DashboardResponse(BaseModel):
     monthly_distributable: Decimal = Field(default=0, max_digits=14, decimal_places=2)
     monthly_profit: Decimal = Field(default=0, max_digits=14, decimal_places=2)
     monthly_salary_total: Decimal = Field(default=0, max_digits=14, decimal_places=2)
+    monthly_salary_cost: Decimal = Field(default=0, max_digits=14, decimal_places=2)
+    monthly_social_cost: Decimal = Field(default=0, max_digits=14, decimal_places=2)
     monthly_commission_total: Decimal = Field(default=0, max_digits=14, decimal_places=2)
 
 
@@ -297,3 +301,31 @@ class ProjectProfitItem(BaseModel):
     profit_rate: float
 
     model_config = {"from_attributes": True}
+
+
+# ── Payment Progress ──
+
+class PaymentStageProgress(BaseModel):
+    stage: int
+    name: str
+    ratio: float
+    expected_amount: float
+    paid_amount: float
+    paid_pct: float
+    reached: bool
+
+
+class PaymentProgressResponse(BaseModel):
+    ratio_key: str
+    total_amount: float
+    total_paid: float
+    total_paid_pct: float
+    stages: List[PaymentStageProgress] = []
+    current_stage: int
+    next_prompt: Optional[str] = None
+
+
+class PaymentRatioOption(BaseModel):
+    value: str
+    label: str
+    stages: int

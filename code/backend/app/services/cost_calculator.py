@@ -3,9 +3,26 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from app.models.models import (
-    Project, ProjectMember, ProjectCost, CostSnapshot, Employee
+    Project, ProjectMember, ProjectCost, CostSnapshot, Employee, Payment
 )
 from app.services.bonus_calculator import calculate_bonus_pool, get_bonus_rate
+
+AVG_DAYS_PER_MONTH = Decimal("30.44")
+
+
+def calc_actual_months(start_date, end_date, fallback=None) -> Decimal:
+    """按实际自然月计算耗时（首尾月按天数比例折算）。
+
+    例如 1月15日 → 7月28日 = 194天 / 30.44 = 6.37个月。
+    start_date/end_date 缺失或非法时回退到 fallback。
+    """
+    if start_date and end_date and isinstance(start_date, datetime.date) and isinstance(end_date, datetime.date):
+        days = (end_date - start_date).days
+        if days > 0:
+            return (Decimal(days) / AVG_DAYS_PER_MONTH).quantize(Decimal("0.01"))
+    if fallback is not None:
+        return Decimal(str(fallback)).quantize(Decimal("0.01"))
+    return Decimal("0")
 
 
 class CostCalculator:
@@ -22,49 +39,42 @@ class CostCalculator:
             ProjectMember.deleted_at.is_(None)
         ).all()
 
+        # ── 实际项目耗时（月）──
+        actual_months = calc_actual_months(
+            project.develop_start_date,
+            project.actual_delivery_date,
+            fallback=float(project.project_cycle_month or 0) if project.project_cycle_month else None,
+        )
+
         # ── 计算奖金分配 ──
+        # 规则：UI先按 ui_commission_rate 分走（不论是否有人承担UI角色），
+        # 剩余按开发 share_ratio 分配（含负责人）
         is_sub = project.parent_project_id is not None
         commission_pool = calculate_bonus_pool(project.amount, is_sub=is_sub)
-        ui_rate = project.ui_commission_rate or Decimal("0")
+        ui_rate = project.ui_commission_rate if project.needs_ui else Decimal("0")
 
-        has_lead = any(m.role == "负责人" for m in members)
-        ui_members = [m for m in members if m.role == "UI"]
         dev_members = [m for m in members if m.role in ("开发", "负责人", None, "")]
-        pure_devs = [m for m in members if m.role in ("开发", None, "")]
+        ui_members = [m for m in members if m.role == "UI"]
+        has_ui = project.needs_ui and ui_rate > 0
+        is_single = len(dev_members) == 1 and not has_ui
 
-        # 单人项目定义: 1个开发 + 无UI → 独享100%
-        is_single = len(pure_devs) == 1 and len(ui_members) == 0 and len(members) == 1
+        ui_share = (commission_pool * ui_rate).quantize(Decimal("0.01")) if has_ui else Decimal("0")
+        dev_pool = commission_pool - ui_share
 
-        if is_single:
-            lead_share = Decimal("0")
-            ui_share = Decimal("0")
-            dev_pool = commission_pool
-        else:
-            lead_share = commission_pool * Decimal("0.10") if has_lead else Decimal("0")
-            ui_share = commission_pool * ui_rate if ui_members and ui_rate > 0 else Decimal("0")
-            dev_pool = commission_pool - lead_share - ui_share
+        total_dev_ratio = sum((m.share_ratio or Decimal("1")) for m in dev_members) or Decimal("1")
 
-        # 开发人员(非负责人)按 share_ratio 分配 dev_pool
-        total_dev_ratio = sum((m.share_ratio or Decimal("1")) for m in pure_devs) or Decimal("1")
-
-        # 写回每个成员的奖金
         for m in members:
+            m.product_bonus = Decimal("0")
             if is_single:
                 m.bonus = commission_pool
-                m.product_bonus = Decimal("0")
-            elif m.role == "负责人":
-                m.bonus = lead_share
-                m.product_bonus = Decimal("0")
             elif m.role == "UI":
                 m.bonus = ui_share
-                m.product_bonus = Decimal("0")
-            else:  # 开发
+            else:
                 ratio = (m.share_ratio or Decimal("1")) / total_dev_ratio
-                m.bonus = dev_pool * ratio
-                m.product_bonus = Decimal("0")
+                m.bonus = (dev_pool * ratio).quantize(Decimal("0.01"))
         self.db.commit()
 
-        # ── 计算工资/社保成本 ──
+        # ── 计算工资/社保成本（按实际耗时）──
         salary_cost = Decimal("0")
         social_security_cost = Decimal("0")
         developer_bonus = Decimal("0")
@@ -77,6 +87,13 @@ class CostCalculator:
             ).first()
             if not employee:
                 continue
+
+            is_dev = member.role in ("开发", "负责人", None, "")
+            try:
+                if is_dev:
+                    self._ensure_snapshot(project_id, employee)
+            except Exception:
+                pass
 
             is_dev = member.role in ("开发", "负责人", None, "")
 
@@ -93,12 +110,12 @@ class CostCalculator:
 
             salary_ratio = Decimal("0.8") if employee.employment_type == "试用" else Decimal("1")
 
-            # 只有开发人员计算工资和社保成本
+            # 开发人员按实际耗时计算工资+社保，非开发人员仅奖金
             if is_dev:
-                member_salary_cost = sal * member.input_month * salary_ratio
+                member_salary_cost = (sal * actual_months * salary_ratio).quantize(Decimal("0.01"))
                 member_social_cost = Decimal("0")
                 if employee.employment_type == "正式":
-                    member_social_cost = soc * member.input_month
+                    member_social_cost = (soc * actual_months).quantize(Decimal("0.01"))
             else:
                 member_salary_cost = Decimal("0")
                 member_social_cost = Decimal("0")
@@ -114,15 +131,20 @@ class CostCalculator:
                 "share_ratio": float(member.share_ratio or 1),
                 "employment_type": employee.employment_type,
                 "salary_ratio": float(salary_ratio),
+                "actual_months": float(actual_months),
                 "salary_cost": float(member_salary_cost),
                 "social_security_cost": float(member_social_cost),
                 "bonus": float(member.bonus),
                 "product_bonus": float(member.product_bonus),
             })
 
+        # 如果UI份额没有分配给具体成员，仍计入奖金成本
+        if not ui_members:
+            developer_bonus += ui_share
+
         total_cost = salary_cost + social_security_cost + developer_bonus + product_bonus
 
-        # Upsert project_costs record
+        # Upsert project_costs
         cost_record = self.db.query(ProjectCost).filter(
             ProjectCost.project_id == project_id
         ).first()
@@ -146,8 +168,9 @@ class CostCalculator:
 
         self.db.commit()
 
-        profit = project.amount - total_cost
-        profit_rate = float(profit / project.amount) if project.amount > 0 else 0.0
+        effective_revenue = project.amount * Decimal("0.35")
+        profit = effective_revenue - total_cost
+        profit_rate = float(profit / effective_revenue) if effective_revenue > 0 else 0.0
 
         # Commission pool split (UI vs Dev)
         is_sub = project.parent_project_id is not None
@@ -160,6 +183,7 @@ class CostCalculator:
 
         return {
             "project_id": project_id,
+            "actual_months": float(actual_months),
             "salary_cost": float(salary_cost),
             "social_security_cost": float(social_security_cost),
             "developer_bonus": float(developer_bonus),

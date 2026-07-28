@@ -2,13 +2,13 @@ from app.models.models import Project
 
 
 def auto_advance_status(project: Project) -> Project:
-    """Auto-advance project status based on filled-in time nodes."""
+    """根据已填时间节点自动推进项目状态。"""
     if project.acceptance_date:
-        project.status = "完成"
+        project.status = "已分成"
     elif project.actual_delivery_date:
         project.status = "已交付"
     elif project.ui_confirm_date:
-        project.status = "开发准备"
+        project.status = "UI确认"
 
     if project.develop_start_date is None and project.ui_confirm_date:
         project.develop_start_date = project.ui_confirm_date

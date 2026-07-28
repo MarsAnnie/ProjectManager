@@ -47,6 +47,41 @@ html, body, #root {
   border: none !important;
   font-weight: 500;
 }
+/* 项目状态颜色 */
+.status-tag-未开始 {
+  background: #6b7280 !important;
+  color: #fff !important;
+}
+.status-tag-UI确认 {
+  background: #a855f7 !important;
+  color: #fff !important;
+}
+.status-tag-开发中 {
+  background: #3b82f6 !important;
+  color: #fff !important;
+}
+.status-tag-测试中 {
+  background: #f59e0b !important;
+  color: #000 !important;
+}
+.status-tag-已交付 {
+  background: #14b8a6 !important;
+  color: #fff !important;
+}
+.status-tag-已分成 {
+  background: #22c55e !important;
+  color: #fff !important;
+}
+.status-tag-暂停 {
+  background: #f97316 !important;
+  color: #fff !important;
+}
+.status-tag-退款 {
+  background: #ef4444 !important;
+  color: #fff !important;
+}
+
+/* 人员状态 */
 .status-tag-resigned, .status-tag-离职 {
   background: #ef4444 !important;
   color: #fff !important;
@@ -67,21 +102,28 @@ html, body, #root {
   background: #22c55e !important;
   color: #fff !important;
 }
-.status-tag-done, .status-tag-完成, .status-tag-已交付 {
-  background: #22c55e !important;
-  color: #fff !important;
-}
-.status-tag-progress, .status-tag-开发中, .status-tag-开发准备 {
-  background: #3b82f6 !important;
-  color: #fff !important;
-}
-.status-tag-pending, .status-tag-待签约, .status-tag-待回款 {
+
+.status-tag-pending, .status-tag-待回款 {
   background: #6b7280 !important;
   color: #fff !important;
 }
 .status-tag-overdue, .status-tag-逾期 {
   background: #ef4444 !important;
   color: #fff !important;
+}
+
+/* Steps 步骤条已完成图标更醒目 */
+.ant-steps-item-finish .ant-steps-item-icon {
+  background: #22c55e !important;
+  border-color: #22c55e !important;
+}
+.ant-steps-item-finish .ant-steps-item-icon .anticon {
+  color: #fff !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+}
+.ant-steps-item-finish .ant-steps-item-tail::after {
+  background: #22c55e !important;
 }
 
 ::-webkit-scrollbar {

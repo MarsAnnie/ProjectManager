@@ -1,0 +1,3 @@
+- [ProjectManager 系统总览](projectmanager-overview.md) — 技术栈、部署、模块、数据结构
+- [核心业务规则](business-rules.md) — 分成模型、成本计算、奖金费率、试用期规则
+- [员工名单](employees.md) — 11名员工，含薪资和状态

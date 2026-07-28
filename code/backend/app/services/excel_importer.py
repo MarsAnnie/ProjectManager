@@ -123,13 +123,13 @@ def import_from_excel(filepath: str, db: Session) -> dict:
             acceptance = _date(_g(vals, col, "验收时间"))
             delivery = _date(_g(vals, col, "实际交付日期"))
             if acceptance:
-                proj.status = "完成"
+                proj.status = "已分成"
             elif delivery:
                 proj.status = "已交付"
             elif _g(vals, col, "UI确认时间"):
-                proj.status = "开发中"
+                proj.status = "UI确认"
             else:
-                proj.status = "待签约"
+                proj.status = "未开始"
 
             proj.contract_date = _date(_g(vals, col, "项目签单时间"))
             proj.ui_confirm_date = _date(_g(vals, col, "UI确认时间"))

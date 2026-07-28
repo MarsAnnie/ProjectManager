@@ -11,7 +11,25 @@ from app.services.cost_calculator import CostCalculator
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
-COST_RATIO = Decimal("0.35")
+COST_RATIO = Decimal("0.35")  # 内部结算系数
+
+
+def _last_payment_received_this_month(project_id: int, today: datetime.date, db: Session) -> bool:
+    """项目最后一期回款是否在本月到账（尾款到账）"""
+    first_of_month = today.replace(day=1)
+    payments = db.query(Payment).filter(
+        Payment.project_id == project_id,
+        Payment.deleted_at.is_(None)
+    ).order_by(Payment.payment_stage.desc()).all()
+    if not payments:
+        return False
+    last = payments[0]
+    return (
+        last.status == "已到账"
+        and last.actual_payment_date is not None
+        and last.actual_payment_date >= first_of_month
+        and last.actual_payment_date <= today
+    )
 
 
 @router.get("", response_model=DashboardResponse)
@@ -27,20 +45,21 @@ def get_dashboard(db: Session = Depends(get_db)):
         Project.deleted_at.is_(None)
     ).count()
     # 正在开发项目数
-    in_progress_statuses = ["开发中", "开发准备", "UI确认", "测试", "待验收"]
+    in_progress_statuses = ["开发中", "UI确认", "测试中"]
     in_progress_count = db.query(Project).filter(
         Project.deleted_at.is_(None),
         Project.status.in_(in_progress_statuses)
     ).count()
     main_project_count = project_count
     contract_amount = sum((p.amount for p in projects), Decimal("0"))
+    effective_revenue = contract_amount * COST_RATIO
     total_cost = sum(
         (db.query(ProjectCost).filter(ProjectCost.project_id == p.id).first().total_cost
          if db.query(ProjectCost).filter(ProjectCost.project_id == p.id).first() else Decimal("0"))
         for p in projects
     )
-    total_profit = contract_amount - total_cost
-    overall_profit_rate = float(total_profit / contract_amount) if contract_amount > 0 else 0.0
+    total_profit = effective_revenue - total_cost
+    overall_profit_rate = float(total_profit / effective_revenue) if effective_revenue > 0 else 0.0
 
     total_paid = Decimal("0")
     for p in projects:
@@ -63,40 +82,41 @@ def get_dashboard(db: Session = Depends(get_db)):
     ).all()
     estimated_30day = sum((p.payment_amount for p in upcoming_payments), Decimal("0"))
 
-    # ── 当月可分款 ──
+    # ── 当月经营：尾款到账项目 = 当月收入来源 ──
+    today = datetime.date.today()
     first_of_month = today.replace(day=1)
     monthly_distributable = Decimal("0")
+    monthly_salary_cost = Decimal("0")
+    monthly_social_cost = Decimal("0")
+    monthly_commission_total = Decimal("0")
+
     all_projects = db.query(Project).filter(
         Project.deleted_at.is_(None),
         Project.parent_project_id.is_(None)
     ).all()
-    for p in all_projects:
-        payments = db.query(Payment).filter(
-            Payment.project_id == p.id,
-            Payment.deleted_at.is_(None)
-        ).order_by(Payment.payment_stage.desc()).all()
-        if not payments:
-            continue
-        last_payment = payments[0]
-        if (
-            last_payment.status == "已到账"
-            and last_payment.actual_payment_date
-            and last_payment.actual_payment_date >= first_of_month
-            and last_payment.actual_payment_date <= today
-        ):
-            monthly_distributable += p.amount
 
-    # ── 当月利润 = 可分款 × 35% - 人员工资总和 - 提成总和 ──
+    for p in all_projects:
+        if _last_payment_received_this_month(p.id, today, db):
+            monthly_distributable += p.amount
+            # 取该项目实际成本（工资+社保+提成）
+            cost_record = db.query(ProjectCost).filter(
+                ProjectCost.project_id == p.id
+            ).first()
+            if cost_record:
+                monthly_salary_cost += cost_record.salary_cost
+                monthly_social_cost += cost_record.social_security_cost
+                monthly_commission_total += (cost_record.developer_bonus + cost_record.product_bonus)
+
+    # 当月人员工资总和（所有在职员工）
     monthly_salary_total = db.query(func.coalesce(func.sum(Employee.salary), 0)).filter(
         Employee.deleted_at.is_(None),
         Employee.status == "在职"
     ).scalar() or Decimal("0")
 
-    monthly_commission_total = Decimal("0")
-
     monthly_profit = (
         monthly_distributable * COST_RATIO
-        - monthly_salary_total
+        - monthly_salary_cost
+        - monthly_social_cost
         - monthly_commission_total
     )
 
@@ -115,6 +135,8 @@ def get_dashboard(db: Session = Depends(get_db)):
         "monthly_distributable": monthly_distributable,
         "monthly_profit": monthly_profit,
         "monthly_salary_total": monthly_salary_total,
+        "monthly_salary_cost": monthly_salary_cost,
+        "monthly_social_cost": monthly_social_cost,
         "monthly_commission_total": monthly_commission_total,
     }
 
@@ -136,8 +158,9 @@ def profit_ranking(
             ProjectCost.project_id == p.id
         ).first()
         cost = cost_record.total_cost if cost_record else Decimal("0")
-        profit = p.amount - cost
-        profit_rate = float(profit / p.amount) if p.amount > 0 else 0.0
+        effective = p.amount * COST_RATIO
+        profit = effective - cost
+        profit_rate = float(profit / effective) if effective > 0 else 0.0
         results.append({
             "id": p.id,
             "project_name": p.project_name,
